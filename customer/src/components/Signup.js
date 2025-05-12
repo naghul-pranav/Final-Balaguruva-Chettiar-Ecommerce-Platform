@@ -133,7 +133,7 @@ const [serverCode, setServerCode] = useState(null);
       password: formData.password
     };
 
-    const response = await axios.post("http://localhost:5008/signup", signupData);
+    const response = await axios.post("https://final-balaguruva-chettiar-ecommerce.onrender.com/signup", signupData);
     
     if (response.data && response.data.token) {
       localStorage.setItem("token", response.data.token);
@@ -262,7 +262,7 @@ const [serverCode, setServerCode] = useState(null);
       setIsLoading(true);
       setError(null);
       try {
-        const response = await axios.post("http://localhost:5008/send-verification", {
+        const response = await axios.post("https://final-balaguruva-chettiar-ecommerce.onrender.com/send-verification", {
           email: formData.email,
         });
         setServerCode(response.data.code);

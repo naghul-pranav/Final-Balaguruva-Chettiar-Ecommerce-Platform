@@ -119,7 +119,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
 
       // Send to backend
       const response = await axios.post(
-        "http://localhost:5008/api/cart/add",
+        "https://final-balaguruva-chettiar-ecommerce.onrender.com/api/cart/add",
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -175,7 +175,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
       if (!token) return;
 
       setWishlistLoading(true);
-      const response = await axios.get("http://localhost:5008/api/user/wishlist", {
+      const response = await axios.get("https://final-balaguruva-chettiar-ecommerce.onrender.com/api/user/wishlist", {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -208,7 +208,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
       
       if (wishlistItems.has(productId)) {
         // Remove from wishlist
-        await axios.delete(`http://localhost:5008/api/user/wishlist/${productId}`, {
+        await axios.delete(`https://final-balaguruva-chettiar-ecommerce.onrender.com/api/user/wishlist/${productId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -219,7 +219,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
         });
       } else {
         // Add to wishlist
-        await axios.post("http://localhost:5008/api/user/wishlist", {
+        await axios.post("https://final-balaguruva-chettiar-ecommerce.onrender.com/api/user/wishlist", {
           productId,
           name: product.name,
           price: product.discountedPrice, // 👈 Fix: include this field

@@ -40,7 +40,7 @@ const [deleteError, setDeleteError] = useState("");
   const [wishlistError, setWishlistError] = useState(null);
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' or 'wishlist'
 
-  const API_URL = "http://localhost:5008";
+  const API_URL = "https://final-balaguruva-chettiar-ecommerce.onrender.com";
 
   const fetchUserProfile = async () => {
     setLoading(true);
@@ -213,7 +213,7 @@ const [deleteError, setDeleteError] = useState("");
     console.log("Sending to /api/cart/add from wishlist:", payload);
 
     const response = await axios.post(
-      "http://localhost:5008/api/cart/add",
+      "https://final-balaguruva-chettiar-ecommerce.onrender.com/api/cart/add",
       payload,
       { headers: { Authorization: `Bearer ${token}` } }
     );
