@@ -88,6 +88,21 @@ const contactSchema = new mongoose.Schema({
 
 const Contact = mongoose.model("Contact", contactSchema);
 
+// Task Schema
+const taskSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  priority: { 
+    type: String, 
+    required: true, 
+    enum: ['low', 'medium', 'high'], 
+    default: 'medium' 
+  },
+  due: { type: Date, required: true },
+  completed: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const Task = mongoose.model("Task", taskSchema);
 // Order Schema
 const orderSchema = new mongoose.Schema({
   user: { 
@@ -238,6 +253,87 @@ const formatUser = (user) => {
   };
 };
 
+// GET all tasks
+app.get("/api/tasks", async (req, res) => {
+  try {
+    const tasks = await Task.find({}).sort({ createdAt: -1 });
+    res.status(200).json(tasks);
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    res.status(500).json({ error: "Failed to fetch tasks", details: error.message });
+  }
+});
+
+// POST create a new task
+app.post("/api/tasks", async (req, res) => {
+  try {
+    const { title, priority, due } = req.body;
+    if (!title || !due) {
+      return res.status(400).json({ error: "Title and due date are required" });
+    }
+
+    const newTask = new Task({
+      title,
+      priority,
+      due: new Date(due),
+      completed: false,
+    });
+
+    await newTask.save();
+    res.status(201).json({ success: true, task: newTask });
+  } catch (error) {
+    console.error("Error creating task:", error);
+    res.status(500).json({ error: "Failed to create task", details: error.message });
+  }
+});
+
+// PUT update task (for toggling completion)
+app.put("/api/tasks/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { completed } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid task ID format" });
+    }
+
+    const updatedTask = await Task.findByIdAndUpdate(
+      id,
+      { completed, updatedAt: Date.now() },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTask) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    res.status(200).json({ success: true, task: updatedTask });
+  } catch (error) {
+    console.error("Error updating task:", error);
+    res.status(500).json({ error: "Failed to update task", details: error.message });
+  }
+});
+
+// DELETE a task
+app.delete("/api/tasks/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid task ID format" });
+    }
+
+    const deletedTask = await Task.findByIdAndDelete(id);
+    if (!deletedTask) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Task deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    res.status(500).json({ error: "Failed to delete task", details: error.message });
+  }
+});
 // GET all products
 app.get("/api/products", async (req, res) => {
   try {

@@ -1,18 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './Navbar';
-import { Box, ShoppingCart, Users, MessageSquare, BarChart2, Settings, Package, 
-         AlertTriangle, TrendingUp, ChevronRight, RefreshCw, ArrowUp, ArrowDown,
-         Moon, Sun, Calendar, Bell, HelpCircle, Clock, CheckSquare, FileText,
-         Zap, Activity, Edit3, PieChart, Filter, Archive, User, Star } from 'lucide-react';
+import { Box, ShoppingCart, Users, MessageSquare, TrendingUp, AlertTriangle, RefreshCw, Moon, Sun, Calendar, Bell, HelpCircle, CheckSquare, Zap, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000;
-
-// Generate sample data for sparklines
-const generateSparklineData = (baseline, variance, points = 12) => {
-    return Array.from({length: points}, () => baseline + (Math.random() * variance * 2 - variance));
-};
 
 const AdminHome = () => {
     const [products, setProducts] = useState(null);
@@ -27,29 +19,21 @@ const AdminHome = () => {
     const [userRetryCount, setUserRetryCount] = useState(0);
     const [orderRetryCount, setOrderRetryCount] = useState(0);
     const [darkMode, setDarkMode] = useState(false);
+    const [tasks, setTasks] = useState(null);
+    const [tasksError, setTasksError] = useState(null);
+    const [taskRetryCount, setTaskRetryCount] = useState(0);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [newTaskPriority, setNewTaskPriority] = useState('medium');
+    const [newTaskDueDate, setNewTaskDueDate] = useState('');
     
-    // Add these new state variables
-    const [recentActivities, setRecentActivities] = useState([
-        { id: 1, type: 'order', message: 'New order #38492 received', time: '10 minutes ago', status: 'success' },
-        { id: 2, type: 'user', message: 'New user registration: John Doe', time: '25 minutes ago', status: 'info' },
-        { id: 3, type: 'product', message: 'Product "Wireless Headphones" is low on stock', time: '1 hour ago', status: 'warning' },
-        { id: 4, type: 'message', message: 'New customer inquiry from Sarah Smith', time: '2 hours ago', status: 'info' },
-        { id: 5, type: 'system', message: 'System backup completed successfully', time: '3 hours ago', status: 'success' },
-    ]);
-    
+    // State for Pending Tasks (dynamic to-do list)
     const [pendingTasks, setPendingTasks] = useState([
-        { id: 1, title: 'Review new orders', priority: 'high', due: '2023-09-30' },
-        { id: 2, title: 'Update product descriptions', priority: 'medium', due: '2023-10-05' },
-        { id: 3, title: 'Respond to customer inquiries', priority: 'high', due: '2023-09-29' },
-        { id: 4, title: 'Schedule inventory restocking', priority: 'medium', due: '2023-10-10' },
+        { id: 1, title: 'Review new orders', priority: 'high', due: '2025-05-15', completed: false },
+        { id: 2, title: 'Update product descriptions', priority: 'medium', due: '2025-05-20', completed: false },
+        { id: 3, title: 'Respond to customer inquiries', priority: 'high', due: '2025-05-14', completed: false },
+        { id: 4, title: 'Schedule inventory restocking', priority: 'medium', due: '2025-05-25', completed: false },
     ]);
-    
-    const [upcomingEvents, setUpcomingEvents] = useState([
-        { id: 1, title: 'Marketing Campaign Launch', date: '2023-10-01', type: 'marketing' },
-        { id: 2, title: 'Inventory Audit', date: '2023-10-15', type: 'inventory' },
-        { id: 3, title: 'Staff Meeting', date: '2023-09-30', type: 'internal' },
-        { id: 4, title: 'New Product Launch', date: '2023-10-20', type: 'product' },
-    ]);
+   
 
     // Get current time to display greeting
     const currentHour = new Date().getHours();
@@ -59,6 +43,45 @@ const AdminHome = () => {
     } else if (currentHour >= 17) {
         greeting = "Good evening";
     }
+
+    const loadTasksData = async (retry = true) => {
+  try {
+    const response = await fetch('https://balaguruva-admin.onrender.com/api/tasks');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    setTasks(data);
+    setTasksError(null);
+    setTaskRetryCount(0);
+  } catch (error) {
+    console.error('Tasks error:', error);
+    const errorMessage = 'Failed to load tasks. Please try again.';
+    
+    if (retry && taskRetryCount < MAX_RETRIES) {
+      setTaskRetryCount(prev => prev + 1);
+      setTimeout(() => loadTasksData(true), RETRY_DELAY);
+    } else {
+      setTasksError(errorMessage);
+    }
+  }
+};
+
+// Update useEffect to include loadTasksData
+useEffect(() => {
+  loadDashboardData();
+  loadContactsData();
+  loadUsersData();
+  loadOrdersData();
+  loadTasksData(); // Add this line
+  
+  // Check for saved theme preference
+  const savedTheme = localStorage.getItem('adminDarkMode');
+  if (savedTheme === 'true') {
+    setDarkMode(true);
+    document.body.classList.add('dark-mode');
+  }
+}, []);
 
     useEffect(() => {
         loadDashboardData();
@@ -73,7 +96,7 @@ const AdminHome = () => {
             document.body.classList.add('dark-mode');
         }
     }, []);
-    
+
     const toggleDarkMode = () => {
         setDarkMode(prev => {
             const newState = !prev;
@@ -89,7 +112,7 @@ const AdminHome = () => {
         });
     };
 
-    const loadDashboardData = async () => {
+    const loadDashboardData = async (retry = true) => {
         try {
             const response = await fetch('https://balaguruva-admin.onrender.com/api/products');
             if (!response.ok) {
@@ -97,9 +120,18 @@ const AdminHome = () => {
             }
             const data = await response.json();
             setProducts(data);
+            setError(null);
+            setRetryCount(0);
         } catch (error) {
             console.error('Dashboard error:', error);
-            setError('Failed to load product count. Please try again.');
+            const errorMessage = 'Failed to load product count. Please try again.';
+            
+            if (retry && retryCount < MAX_RETRIES) {
+                setRetryCount(prev => prev + 1);
+                setTimeout(() => loadDashboardData(true), RETRY_DELAY);
+            } else {
+                setError(errorMessage);
+            }
         }
     };
 
@@ -156,11 +188,9 @@ const AdminHome = () => {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
-            // Extract orders array from response
             if (data && data.success && Array.isArray(data.orders)) {
                 setOrders(data.orders);
             } else {
-                // If response structure is different, try to handle it
                 setOrders(Array.isArray(data) ? data : []);
             }
             setOrdersError(null);
@@ -178,18 +208,11 @@ const AdminHome = () => {
         }
     };
 
-    // Calculate total revenue from orders - with robust error handling
+    // Calculate total revenue from orders
     const calculateTotalRevenue = () => {
-        // Check if orders exists and is an array
         if (!orders) return 0;
-        
-        // Handle different possible response structures
-        const ordersList = Array.isArray(orders) ? orders : 
-                          (orders.orders && Array.isArray(orders.orders)) ? orders.orders : [];
-        
-        // Safe reduce function with fallback to 0
         try {
-            return ordersList.reduce((total, order) => {
+            return orders.reduce((total, order) => {
                 return total + (Number(order.totalPrice) || 0);
             }, 0);
         } catch (error) {
@@ -198,22 +221,8 @@ const AdminHome = () => {
         }
     };
 
-    // Sample trend data for stats
-    const statTrends = {
-        products: { percentage: 12.5, isUp: true, data: generateSparklineData(15, 5) },
-        orders: { percentage: 8.3, isUp: true, data: generateSparklineData(20, 7) },
-        messages: { percentage: 0, isUp: false, data: generateSparklineData(10, 4) },
-        revenue: { percentage: 15.7, isUp: true, data: generateSparklineData(100, 30) },
-        users: { percentage: 9.2, isUp: true, data: generateSparklineData(25, 8) }
-    };
-
-    const StatCard = ({ icon: Icon, title, value, loading, error, onRetry, iconClass, trend, cardClass }) => {
+    const StatCard = ({ icon: Icon, title, value, loading, error, onRetry, iconClass, cardClass }) => {
         const [isHovered, setIsHovered] = useState(false);
-        const tooltipText = trend ? 
-            `${trend.isUp ? 'Increased' : 'Decreased'} by ${Math.abs(trend.percentage).toFixed(1)}% compared to last month` : '';
-        
-        // Calculate max height for sparkline normalization
-        const maxHeight = trend?.data ? Math.max(...trend.data) : 0;
         
         return (
             <div 
@@ -236,7 +245,7 @@ const AdminHome = () => {
                         iconClass === 'icon-gradient-info' ? 'bg-blue-100 text-blue-600' : ''
                     } ${isHovered ? 'transform scale-110 rotate-3' : ''}`}>
                         <Icon 
-                            size={24} 
+                            size={24}
                             strokeWidth={1.5}
                         />
                     </div>
@@ -274,213 +283,138 @@ const AdminHome = () => {
                                         }).format(value)
                                         : value}
                                 </div>
-                                {trend && (
-                                    <div className={`ml-2 flex items-center text-xs ${
-                                        trend.isUp ? 'text-green-600' : 'text-red-600'
-                                    }`}>
-                                        {trend.isUp ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                                        <span>{Math.abs(trend.percentage).toFixed(1)}%</span>
-                                    </div>
-                                )}
-                                {tooltipText && (
-                                    <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs p-2 rounded pointer-events-none whitespace-nowrap">
-                                        {tooltipText}
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>
                 </div>
-                
-                {trend?.data && !loading && !error && (
-                    <div className="h-10 mt-2">
-                        <svg width="100%" height="40" className="overflow-visible">
-                            {trend.data.map((value, index) => {
-                                const x = (index / (trend.data.length - 1)) * 100 + '%';
-                                const y = 40 - ((value / maxHeight) * 30);
-                                return (
-                                    <circle 
-                                        key={index} 
-                                        cx={x} 
-                                        cy={y} 
-                                        r={isHovered ? "2.5" : "1.5"}
-                                        className={`transition-all duration-200 ${
-                                            trend.isUp ? 'fill-green-400' : 'fill-red-400'
-                                        }`}
-                                        style={{opacity: 0.3 + (index / trend.data.length) * 0.7}}
-                                    />
-                                );
-                            })}
-                            {trend.data.map((value, index, array) => {
-                                if (index === 0) return null;
-                                const x1 = ((index - 1) / (array.length - 1)) * 100 + '%';
-                                const y1 = 40 - ((array[index - 1] / maxHeight) * 30);
-                                const x2 = (index / (array.length - 1)) * 100 + '%';
-                                const y2 = 40 - ((value / maxHeight) * 30);
-                                return (
-                                    <line 
-                                        key={`line-${index}`}
-                                        x1={x1}
-                                        y1={y1}
-                                        x2={x2}
-                                        y2={y2}
-                                        strokeWidth={isHovered ? "2" : "1.25"}
-                                        className={`transition-all duration-200 ${
-                                            trend.isUp ? 'stroke-green-400' : 'stroke-red-400'
-                                        }`}
-                                    />
-                                );
-                            })}
-                        </svg>
-                    </div>
-                )}
             </div>
         );
     };
 
-    const DashboardCard = ({ icon: Icon, title, description, link, iconClass }) => {
-        const [isHovered, setIsHovered] = useState(false);
-        
-        return (
-            <div 
-                className="bg-white rounded-xl shadow-md p-6 flex flex-col transition-all duration-300 hover:shadow-xl"
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-            >
-                <div className={`p-3 rounded-full w-fit mb-4 transition-all duration-300 ${
-                    iconClass === 'icon-gradient-primary' ? 'bg-purple-100 text-purple-600' : 
-                    iconClass === 'icon-gradient-success' ? 'bg-green-100 text-green-600' :
-                    iconClass === 'icon-gradient-info' ? 'bg-blue-100 text-blue-600' : ''
-                } ${isHovered ? 'transform scale-110 -translate-y-1' : ''}`}>
-                    <Icon 
-                        size={32} 
-                        strokeWidth={1.5}
-                    />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">{title}</h3>
-                <p className="text-gray-600 mb-6 flex-grow">{description}</p>
-                <a 
-                    href={link} 
-                    className="flex items-center text-white bg-indigo-600 hover:bg-indigo-700 py-2 px-4 rounded-md transition-colors duration-200 w-fit"
-                >
-                    Access {typeof title === 'string' ? title.split(' ')[0] : 
-                              typeof title.props.children === 'string' ? title.props.children.split(' ')[0] : 'Section'} 
-                    <ChevronRight size={18} className={`ml-1 transition-transform duration-300 ${
-                        isHovered ? 'transform translate-x-1' : ''
-                    }`}/>
-                </a>
-            </div>
-        );
-    };
+    const TaskItem = ({ task, onToggleComplete, onDelete }) => {
+  const getPriorityColor = (priority) => {
+    switch(priority) {
+      case 'high': return 'bg-red-100 text-red-700';
+      case 'medium': return 'bg-yellow-100 text-yellow-700';
+      default: return 'bg-blue-100 text-blue-700';
+    }
+  };
+  
+  const isOverdue = new Date(task.due) < new Date();
+  
+  return (
+    <div className="flex items-center p-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+      <div className="mr-3">
+        <input 
+          type="checkbox" 
+          className="w-4 h-4 accent-indigo-600 cursor-pointer"
+          checked={task.completed}
+          onChange={() => onToggleComplete(task._id)} // Use _id
+        />
+      </div>
+      <div className="flex-1">
+        <p className={`text-sm font-medium ${task.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+          {task.title}
+        </p>
+        <div className="flex items-center mt-1">
+          <span className={`text-xs px-2 py-0.5 rounded-full ${getPriorityColor(task.priority)}`}>
+            {task.priority}
+          </span>
+          <span className={`text-xs ml-2 ${isOverdue && !task.completed ? 'text-red-600' : 'text-gray-500'}`}>
+            {isOverdue && !task.completed ? 'Overdue: ' : 'Due: '} 
+            {new Date(task.due).toLocaleDateString()}
+          </span>
+        </div>
+      </div>
+      <button 
+        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+        onClick={() => onDelete(task._id)} // Use _id
+      >
+        <Trash2 size={16} />
+      </button>
+    </div>
+  );
+};
 
-    // New components for enhanced UI
-    const ActivityItem = ({ activity }) => {
-        const getIcon = (type) => {
-            switch(type) {
-                case 'order': return <ShoppingCart size={16} />;
-                case 'user': return <User size={16} />;
-                case 'product': return <Box size={16} />;
-                case 'message': return <MessageSquare size={16} />;
-                default: return <Activity size={16} />;
-            }
-        };
-        
-        const getStatusColor = (status) => {
-            switch(status) {
-                case 'success': return 'bg-green-100 text-green-700';
-                case 'warning': return 'bg-orange-100 text-orange-700';
-                case 'error': return 'bg-red-100 text-red-700';
-                default: return 'bg-blue-100 text-blue-700';
-            }
-        };
-        
-        return (
-            <div className="flex items-start mb-3 pb-3 border-b border-gray-100 last:border-0">
-                <div className={`p-2 rounded-full mr-3 ${getStatusColor(activity.status)}`}>
-                    {getIcon(activity.type)}
-                </div>
-                <div className="flex-1">
-                    <p className="text-sm text-gray-800">{activity.message}</p>
-                    <span className="text-xs text-gray-500 flex items-center mt-1">
-                        <Clock size={12} className="mr-1" /> {activity.time}
-                    </span>
-                </div>
-            </div>
-        );
-    };
-    
-    const TaskItem = ({ task, onToggleComplete }) => {
-        const getPriorityColor = (priority) => {
-            switch(priority) {
-                case 'high': return 'bg-red-100 text-red-700';
-                case 'medium': return 'bg-yellow-100 text-yellow-700';
-                default: return 'bg-blue-100 text-blue-700';
-            }
-        };
-        
-        const isOverdue = new Date(task.due) < new Date();
-        
-        return (
-            <div className="flex items-center p-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
-                <div className="mr-3">
-                    <input 
-                        type="checkbox" 
-                        className="w-4 h-4 accent-indigo-600 cursor-pointer"
-                        onChange={() => onToggleComplete(task.id)}
-                    />
-                </div>
-                <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800">{task.title}</p>
-                    <div className="flex items-center mt-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${getPriorityColor(task.priority)}`}>
-                            {task.priority}
-                        </span>
-                        <span className={`text-xs ml-2 ${isOverdue ? 'text-red-600' : 'text-gray-500'}`}>
-                            {isOverdue ? 'Overdue: ' : 'Due: '} 
-                            {new Date(task.due).toLocaleDateString()}
-                        </span>
-                    </div>
-                </div>
-                <button className="p-1 text-gray-400 hover:text-gray-600">
-                    <Edit3 size={16} />
-                </button>
-            </div>
-        );
-    };
-    
-    const EventItem = ({ event }) => {
-        const getEventTypeColor = (type) => {
-            switch(type) {
-                case 'marketing': return 'bg-purple-100 text-purple-700 border-purple-200';
-                case 'inventory': return 'bg-blue-100 text-blue-700 border-blue-200';
-                case 'internal': return 'bg-gray-100 text-gray-700 border-gray-200';
-                case 'product': return 'bg-green-100 text-green-700 border-green-200';
-                default: return 'bg-indigo-100 text-indigo-700 border-indigo-200';
-            }
-        };
-        
-        const daysUntil = Math.ceil((new Date(event.date) - new Date()) / (1000 * 60 * 60 * 24));
-        
-        return (
-            <div className={`p-3 mb-2 rounded-lg border ${getEventTypeColor(event.type)}`}>
-                <div className="flex justify-between items-start">
-                    <h4 className="font-medium text-sm">{event.title}</h4>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-white bg-opacity-50">
-                        {event.type}
-                    </span>
-                </div>
-                <div className="flex items-center mt-2 text-xs">
-                    <Calendar size={14} className="mr-1" />
-                    <span>{new Date(event.date).toLocaleDateString()}</span>
-                    {daysUntil > 0 && (
-                        <span className="ml-2 px-1.5 py-0.5 bg-white bg-opacity-50 rounded">
-                            {daysUntil} day{daysUntil !== 1 ? 's' : ''} left
-                        </span>
-                    )}
-                </div>
-            </div>
-        );
-    };
+    const toggleTaskComplete = async (taskId) => {
+  try {
+    const task = tasks.find(t => t._id === taskId);
+    if (!task) return;
+
+    const response = await fetch(`https://balaguruva-admin.onrender.com/api/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: !task.completed }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const updatedTask = await response.json();
+    if (updatedTask.success) {
+      setTasks(tasks.map(t => (t._id === taskId ? updatedTask.task : t)));
+    }
+  } catch (error) {
+    console.error("Error toggling task completion:", error);
+    alert("Failed to update task. Please try again.");
+  }
+};
+
+const deleteTask = async (taskId) => {
+  try {
+    const response = await fetch(`https://balaguruva-admin.onrender.com/api/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      setTasks(tasks.filter(t => t._id !== taskId));
+    }
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    alert("Failed to delete task. Please try again.");
+  }
+};
+
+const addTask = async (e) => {
+  e.preventDefault();
+  if (!newTaskTitle || !newTaskDueDate) {
+    alert('Please provide a task title and due date.');
+    return;
+  }
+
+  try {
+    const response = await fetch('https://balaguruva-admin.onrender.com/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: newTaskTitle,
+        priority: newTaskPriority,
+        due: newTaskDueDate,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      setTasks([result.task, ...tasks]); // Add new task to the top
+      setNewTaskTitle('');
+      setNewTaskPriority('medium');
+      setNewTaskDueDate('');
+    }
+  } catch (error) {
+    console.error("Error adding task:", error);
+    alert("Failed to add task. Please try again.");
+  }
+};
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -580,7 +514,8 @@ const AdminHome = () => {
                         </button>
                     </div>
                 </div>
-                
+
+                {/* StatCards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                     <StatCard 
                         icon={Box}
@@ -591,7 +526,6 @@ const AdminHome = () => {
                         onRetry={loadDashboardData}
                         iconClass="icon-gradient-primary"
                         cardClass="stat-card-primary"
-                        trend={products ? statTrends.products : null}
                     />
                     <StatCard 
                         icon={Users}
@@ -605,7 +539,6 @@ const AdminHome = () => {
                         }}
                         iconClass="icon-gradient-success"
                         cardClass="stat-card-success"
-                        trend={users ? statTrends.users : null}
                     />
                     <StatCard 
                         icon={MessageSquare}
@@ -619,13 +552,11 @@ const AdminHome = () => {
                         }}
                         iconClass="icon-gradient-warning"
                         cardClass="stat-card-warning"
-                        trend={contacts ? statTrends.messages : null}
                     />
                     <StatCard 
                         icon={ShoppingCart}
                         title="Orders"
-                        value={orders ? (Array.isArray(orders) ? orders.length : 
-                              (orders.orders && Array.isArray(orders.orders) ? orders.orders.length : 0)) : '-'}
+                        value={orders ? orders.length : '-'}
                         loading={!orders && !ordersError}
                         error={ordersError}
                         onRetry={() => {
@@ -634,7 +565,6 @@ const AdminHome = () => {
                         }}
                         iconClass="icon-gradient-info"
                         cardClass="stat-card-info"
-                        trend={statTrends.orders}
                     />
                     <StatCard 
                         icon={TrendingUp}
@@ -644,8 +574,108 @@ const AdminHome = () => {
                         error={ordersError}
                         iconClass="icon-gradient-info"
                         cardClass="stat-card-info"
-                        trend={statTrends.revenue}
                     />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+  <h3 className="text-lg font-semibold mb-4 flex items-center">
+    <CheckSquare className="mr-2 text-indigo-600" size={20} /> To-Do List
+  </h3>
+  {/* Add Task Form */}
+  <div className="mb-6">
+    <form onSubmit={addTask} className="flex flex-col sm:flex-row gap-3">
+      <input
+        type="text"
+        value={newTaskTitle}
+        onChange={(e) => setNewTaskTitle(e.target.value)}
+        placeholder="Enter task title"
+        className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <select
+        value={newTaskPriority}
+        onChange={(e) => setNewTaskPriority(e.target.value)}
+        className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+      <input
+        type="date"
+        value={newTaskDueDate}
+        onChange={(e) => setNewTaskDueDate(e.target.value)}
+        min={new Date().toISOString().split('T')[0]}
+        className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <button
+        type="submit"
+        className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+      >
+        Add Task
+      </button>
+    </form>
+  </div>
+  {/* Task List */}
+  <div className="max-h-96 overflow-y-auto">
+    {!tasks && !tasksError ? (
+      <p className="text-gray-500">Loading tasks...</p>
+    ) : tasksError ? (
+      <div className="flex items-center text-red-500">
+        <AlertTriangle size={14} className="mr-1" />
+        <span>{tasksError}</span>
+        <button 
+          onClick={() => { setTaskRetryCount(0); loadTasksData(true); }}
+          className="ml-2 p-1 bg-gray-100 rounded hover:bg-gray-200 flex items-center"
+        >
+          <RefreshCw size={12} />
+        </button>
+      </div>
+    ) : tasks.length > 0 ? (
+      tasks.map(task => (
+        <TaskItem 
+          key={task._id} 
+          task={task} 
+          onToggleComplete={toggleTaskComplete} 
+          onDelete={deleteTask}
+        />
+      ))
+    ) : (
+      <p className="text-gray-500">No tasks to display. Add a task to get started!</p>
+    )}
+  </div>
+</div>
+
+                {/* Quick Actions */}
+                <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                        <Zap className="mr-2 text-indigo-600" size={20} /> Quick Actions
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Link
+                            to="/add-product"
+                            className="flex items-center justify-center p-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                            <Plus size={18} className="mr-2" /> Add Product
+                        </Link>
+                        <Link
+                            to="/orders"
+                            className="flex items-center justify-center p-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                            <ShoppingCart size={18} className="mr-2" /> View Orders
+                        </Link>
+                        <Link
+                            to="/messages"
+                            className="flex items-center justify-center p-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                            <MessageSquare size={18} className="mr-2" /> Check Messages
+                        </Link>
+                        <Link
+                            to="/manage-products"
+                            className="flex items-center justify-center p-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                            <Box size={18} className="mr-2" /> Manage Products
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
