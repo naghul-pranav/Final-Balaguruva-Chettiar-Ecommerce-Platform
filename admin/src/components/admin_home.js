@@ -105,7 +105,7 @@ const AdminHome = () => {
 
     const loadContactsData = async (retry = true) => {
         try {
-            const response = await fetch('http://localhost:5008/api/contacts');
+            const response = await fetch('http://localhost:5000/api/contacts');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -128,7 +128,7 @@ const AdminHome = () => {
 
     const loadUsersData = async (retry = true) => {
         try {
-            const response = await fetch('http://localhost:5008/api/users');
+            const response = await fetch('http://localhost:5000/api/users');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -151,7 +151,7 @@ const AdminHome = () => {
 
     const loadOrdersData = async (retry = true) => {
         try {
-            const response = await fetch('http://localhost:5008/api/orders/admin/all');
+            const response = await fetch('http://localhost:5000/api/orders/admin/all');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -646,98 +646,6 @@ const AdminHome = () => {
                         cardClass="stat-card-info"
                         trend={statTrends.revenue}
                     />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <DashboardCard 
-                        icon={Package}
-                        title={<span className="gradient-text-purple">Inventory Management</span>}
-                        description="Manage your product catalog, track stock levels and update inventory in real-time"
-                        link="/products"
-                        iconClass="icon-gradient-primary"
-                    />
-                    <DashboardCard 
-                        icon={BarChart2}
-                        title={<span className="gradient-text-blue">Sales Analytics</span>}
-                        description="View detailed sales reports, customer insights and performance metrics"
-                        link="/analytics"
-                        iconClass="icon-gradient-success"
-                    />
-                    <DashboardCard 
-                        icon={Settings}
-                        title={<span className="gradient-text-teal">System Settings</span>}
-                        description="Configure system preferences, user permissions and integration options"
-                        link="/settings"
-                        iconClass="icon-gradient-info"
-                    />
-                </div>
-                
-                {/* Enhanced UI Components - Replace the simple navigation list */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    {/* Recent Activity Section */}
-                    <div className="bg-white rounded-xl shadow-md p-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-semibold text-lg gradient-text-blue">Recent Activity</h3>
-                            <div className="flex space-x-2">
-                                <button className="p-1 rounded hover:bg-gray-100">
-                                    <Filter size={16} />
-                                </button>
-                                <button className="p-1 rounded hover:bg-gray-100">
-                                    <RefreshCw size={16} />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="space-y-1 max-h-80 overflow-y-auto pr-2">
-                            {recentActivities.map(activity => (
-                                <ActivityItem key={activity.id} activity={activity} />
-                            ))}
-                        </div>
-                        <Link to="/activity" className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center justify-center mt-3 py-2 border-t border-gray-100">
-                            View all activity <ChevronRight size={16} />
-                        </Link>
-                    </div>
-                    
-                    {/* Tasks Section */}
-                    <div className="bg-white rounded-xl shadow-md p-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-semibold text-lg gradient-text-purple">Pending Tasks</h3>
-                            <button className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200">
-                                + Add New
-                            </button>
-                        </div>
-                        <div className="max-h-80 overflow-y-auto pr-2">
-                            {pendingTasks.map(task => (
-                                <TaskItem 
-                                    key={task.id} 
-                                    task={task} 
-                                    onToggleComplete={(id) => {
-                                        setPendingTasks(prev => prev.filter(t => t.id !== id));
-                                    }} 
-                                />
-                            ))}
-                        </div>
-                        <Link to="/tasks" className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center justify-center mt-3 py-2 border-t border-gray-100">
-                            View all tasks <ChevronRight size={16} />
-                        </Link>
-                    </div>
-                    
-                    {/* Upcoming Events Section */}
-                    <div className="bg-white rounded-xl shadow-md p-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-semibold text-lg gradient-text-teal">Upcoming Events</h3>
-                            <button className="p-1 rounded hover:bg-gray-100">
-                                <Calendar size={16} />
-                            </button>
-                        </div>
-                        <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
-                            {upcomingEvents.map(event => (
-                                <EventItem key={event.id} event={event} />
-                            ))}
-                        </div>
-                        <Link to="/calendar" className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center justify-center mt-3 py-2 border-t border-gray-100">
-                            View full calendar <ChevronRight size={16} />
-                        </Link>
-                    </div>
                 </div>
                 
                 {/* Performance Highlights */}

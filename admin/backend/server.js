@@ -2,9 +2,10 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const multer = require("multer");
-
+const User = require('./models/User');
 const app = express();
 const PORT = 5000;
+const jwt = require("jsonwebtoken");
 const MONGO_URI = "mongodb+srv://balaguruva-admin:Balaguruva%401@balaguruvacluster.d48xg.mongodb.net/?retryWrites=true&w=majority&appName=BalaguruvaCluster";
 
 // Middleware
@@ -31,30 +32,76 @@ const productSchema = new mongoose.Schema({
   stock: { type: Number, required: true, default: 0, min: 0 },
   createdAt: { type: Date, default: Date.now }
 });
+const contactSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  phone: { type: String, required: true },
+  subject: { type: String, required: true },
+  message: { type: String, required: true },
+  status: { type: String, default: "Pending" },
+  createdAt: { type: Date, default: Date.now, expires: "7d" }
+}, { timestamps: true });
 
+const Contact = mongoose.model("Contact", contactSchema);
+
+// Order Schema
 const orderSchema = new mongoose.Schema({
-  orderItems: [
-    {
-      product: { type: mongoose.Schema.Types.ObjectId, ref: "Products", required: true },
-      quantity: { type: Number, required: true },
-    }
-  ],
+  user: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User',
+    required: false // Allow guest checkout
+  },
+  userEmail: { type: String, required: true },
+  userName: { type: String, required: false, default: "Guest User" },
+  orderItems: [{
+    name: { type: String, required: true },
+    mrp: { type: Number, required: true },
+    discountedPrice: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+    image: { type: String }
+  }],
+  
+  shippingInfo: {
+    fullName: { type: String, required: true },
+    addressLine1: { type: String, required: true },
+    city: { type: String, required: true },
+    postalCode: { type: String, required: true }
+  },
+  deliveryMethod: { 
+    type: String, 
+    required: true,
+    enum: ['standard', 'express'] 
+  },
+  paymentMethod: { 
+    type: String, 
+    required: true,
+    enum: ['razorpay', 'cod', 'upi'] // Add 'upi' here
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'completed', 'failed'],
+    default: 'pending'
+  },
+  paymentResult: {
+    id: { type: String },
+    status: { type: String },
+    update_time: { type: String },
+    email_address: { type: String }
+  },
+  subtotal: { type: Number, required: true },
+  deliveryPrice: { type: Number, required: true, default: 0 },
   totalPrice: { type: Number, required: true },
   orderStatus: {
-    type: String,
-    enum: ["processing", "shipped", "delivered", "cancelled"],
-    default: "processing"
+    type: String, 
+    required: true,
+    enum: ['processing', 'shipped', 'delivered', 'cancelled'],
+    default: 'processing'
   },
-  statusHistory: [
-    {
-      status: { type: String, required: true },
-      timestamp: { type: Date, default: Date.now }
-    }
-  ],
-  createdAt: { type: Date, default: Date.now }
-});
+  orderReference: { type: String, required: true, unique: true },
+  notes: { type: String }
+}, { timestamps: true });
 
-const Order = mongoose.model("Orders", orderSchema);
+const Order = mongoose.model("Order", orderSchema);
 
 // Pre-save middleware for auto-incrementing product ID
 productSchema.pre("save", async function (next) {
@@ -215,7 +262,77 @@ app.put("/api/products/:id", upload.single("image"), async (req, res) => {
     res.status(500).json({ error: "Failed to update product", details: err.message });
   }
 });
-
+app.put("/api/orders/admin/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Status is required" 
+      });
+    }
+    
+    // Validate status value
+    const validStatuses = ['processing', 'shipped', 'delivered', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid status value" 
+      });
+    }
+    
+    // Find the order
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Order not found" 
+      });
+    }
+    
+    // Update order status
+    order.orderStatus = status;
+    
+    // Set payment status to completed if order is delivered and payment was pending
+    if (status === 'delivered' && order.paymentMethod === 'cod' && order.paymentStatus === 'pending') {
+      order.paymentStatus = 'completed';
+    }
+    
+    // If order is cancelled, update payment status appropriately
+    if (status === 'cancelled') {
+      if (order.paymentStatus === 'completed') {
+        // For orders where payment is already completed, we might want to mark as 'refunded'
+        // For simplicity, we're just logging this case
+        console.log(`Admin cancelled order ${id} with completed payment - refund may be needed`);
+      } else if (order.paymentStatus === 'pending') {
+        // For pending payments, mark as failed when order is cancelled
+        order.paymentStatus = 'failed';
+      }
+    }
+    
+    await order.save();
+    
+    res.json({
+      success: true,
+      message: `Order status updated to ${status}`,
+      order: {
+        _id: order._id,
+        orderStatus: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+        updatedAt: order.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error("Error updating order status (admin):", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to update order status", 
+      error: error.message 
+    });
+  }
+});
 app.put("/api/orders/admin/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
@@ -282,6 +399,146 @@ app.delete("/api/products/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to delete product", details: err.message });
   }
 });
+
+app.get("/api/contacts", async (req, res) => {
+  try {
+    const contacts = await Contact.find({});
+    res.status(200).json(contacts);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch contacts", details: error.message });
+  }
+});
+
+// Get All Users
+app.get("/api/users", async (req, res) => {
+  try {
+    const users = await User.find({}, "email name createdAt");
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch users", details: error.message });
+  }
+});
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  console.log(`Auth Header for ${req.path}:`, authHeader); // Debug header
+
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    console.log(`No token provided for ${req.path}`);
+    return res.status(401).json({ message: "Access denied. No token provided." });
+  }
+
+  console.log(`Token received: ${token}`); // Debug token
+
+  try {
+    const verified = jwt.verify(token, "4953546c308be3088b28807c767bd35e99818434d130a588e5e6d90b6d1d326e");
+    console.log(`Token verified for user:`, verified); // Debug verified payload
+    req.user = verified;
+    next();
+  } catch (error) {
+    console.error(`Token verification error for ${req.path}:`, error);
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token expired. Please log in again." });
+    }
+    if (error.name === "JsonWebTokenError") {
+      return res.status(403).json({ message: "Invalid token. Please log in again." });
+    }
+    res.status(500).json({ message: "Internal server error during token verification." });
+  }
+};
+
+app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Status is required" 
+      });
+    }
+    
+    // Validate status value
+    const validStatuses = ['processing', 'shipped', 'delivered', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid status value" 
+      });
+    }
+    
+    // Find the order
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Order not found" 
+      });
+    }
+    
+    // Update order status
+    order.orderStatus = status;
+    
+    // Set payment status to completed if order is delivered and payment was pending
+    if (status === 'delivered' && order.paymentMethod === 'cod' && order.paymentStatus === 'pending') {
+      order.paymentStatus = 'completed';
+    }
+    
+    // If order is cancelled and payment was completed, we might want to handle refund logic here
+    
+    await order.save();
+    
+    res.json({
+      success: true,
+      message: `Order status updated to ${status}`,
+      order: {
+        _id: order._id,
+        orderStatus: order.orderStatus,
+        paymentStatus: order.paymentStatus
+      }
+    });
+  } catch (error) {
+    console.error("Error updating order status:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to update order status", 
+      error: error.message 
+    });
+  }
+});
+// Get All Orders (Admin)
+app.get("/api/orders", authenticateToken, async (req, res) => {
+  try {
+    const orders = await Order.find({}).sort({ createdAt: -1 });
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Failed to fetch orders. Please try again later." });
+  }
+});
+
+// Get All Orders (Admin - No Authentication)
+app.get("/api/orders/admin/all", async (req, res) => {
+  try {
+    const orders = await Order.find({}).sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders
+    });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch orders. Please try again later.",
+      error: error.message
+    });
+  }
+});
+
+// Update Order Status Endpoint for Admin (No Authentication)
+
 
 app.get("/api/deleted-products", async (req, res) => {
   try {

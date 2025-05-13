@@ -17,25 +17,31 @@ const ManageProducts = () => {
   }, []);
 
   const fetchProducts = async () => {
+  try {
     const res = await fetch("http://localhost:5000/api/products");
+    if (!res.ok) throw new Error("Failed to fetch products");
     const data = await res.json();
     setProducts(data);
-  };
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    alert("Failed to fetch products");
+  }
+};
 
   const handleEditClick = (product) => {
-    setEditingProduct(product._id);
-    setFormData({
-      name: product.name,
-      description: product.description,
-      mrp: product.mrp,
-      discount: product.discount,
-      discountedPrice: product.discountedPrice,
-      category: product.category,
-      stock: product.stock,
-      image: product.image,
-    });
-    setPreviewImage(product.image);
-  };
+  setEditingProduct(product._id);
+  setFormData({
+    name: product.name,
+    description: product.description,
+    mrp: product.mrp,
+    discount: product.discount,
+    discountedPrice: product.discountedPrice,
+    category: product.category,
+    stock: product.stock,
+    image: product.image, // Base64 string from API
+  });
+  setPreviewImage(product.image);
+};
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -67,29 +73,48 @@ const ManageProducts = () => {
   };
 
   const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    const form = new FormData();
-    for (const key in formData) {
-      if (key !== "image" && key !== "_imageFile") {
-        form.append(key, formData[key]);
-      }
+  e.preventDefault();
+  const form = new FormData();
+  for (const key in formData) {
+    if (key !== "image" && key !== "_imageFile") {
+      form.append(key, formData[key]);
     }
-    if (formData._imageFile) {
-      form.append("image", formData._imageFile);
+  }
+  if (formData._imageFile) {
+    form.append("image", formData._imageFile);
+  } else if (formData.image && formData.image.startsWith("data:image")) {
+    // Convert Base64 back to a file if the image hasn't changed
+    const base64String = formData.image.split(",")[1];
+    const byteCharacters = atob(base64String);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: "image/png" });
+    form.append("image", blob, "product-image.png");
+  }
 
+  try {
     const res = await fetch(`http://localhost:5000/api/products/${editingProduct}`, {
       method: "PUT",
       body: form,
     });
 
     if (res.ok) {
-      fetchProducts();
+      await fetchProducts();
       setEditingProduct(null);
+      setFormData({});
+      setPreviewImage(null);
     } else {
-      alert("Failed to update product");
+      const errorData = await res.json();
+      alert(`Failed to update product: ${errorData.error || "Unknown error"}`);
     }
-  };
+  } catch (error) {
+    console.error("Error updating product:", error);
+    alert("Failed to update product");
+  }
+};
 
   const handleDeleteClick = (id) => {
     setProductToDelete(id);
@@ -136,28 +161,28 @@ const ManageProducts = () => {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
-                <tr key={product._id} className="border-b">
-                  <td className="px-4 py-3">
-                    <img src={product.image} alt={product.name} className="w-12 h-12 object-cover rounded" />
-                  </td>
-                  <td className="px-4 py-3">{product.name}</td>
-                  <td className="px-4 py-3">{product.mrp}</td>
-                  <td className="px-4 py-3">{product.discount}%</td>
-                  <td className="px-4 py-3">{product.discountedPrice}</td>
-                  <td className="px-4 py-3">{product.stock}</td>
-                  <td className="px-4 py-3">{product.category}</td>
-                  <td className="px-4 py-3 space-x-3">
-                    <button onClick={() => handleEditClick(product)} className="text-blue-600 hover:underline">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => handleDeleteClick(product._id)} className="text-red-600 hover:underline">
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+  {products.map((product) => (
+    <tr key={product._id} className="border-b">
+      <td className="px-4 py-3">
+        <img src={product.image} alt={product.name} className="w-12 h-12 object-cover rounded" />
+      </td>
+      <td className="px-4 py-3">{product.name}</td>
+      <td className="px-4 py-3">{product.mrp}</td>
+      <td className="px-4 py-3">{product.discount}%</td>
+      <td className="px-4 py-3">{product.discountedPrice}</td>
+      <td className="px-4 py-3">{product.stock}</td>
+      <td className="px-4 py-3">{product.category}</td>
+      <td className="px-4 py-3 space-x-3">
+        <button onClick={() => handleEditClick(product)} className="text-blue-600 hover:underline">
+          <Edit2 size={16} />
+        </button>
+        <button onClick={() => handleDeleteClick(product._id)} className="text-red-600 hover:underline">
+          <Trash2 size={16} />
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
           </table>
         </div>
 
@@ -173,36 +198,111 @@ const ManageProducts = () => {
               </button>
               <h3 className="text-xl font-semibold mb-4 text-gray-800">Edit Product</h3>
               <form onSubmit={handleEditSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                Product Name:
-                <input name="name" value={formData.name} onChange={handleChange} placeholder="Name" required className="input" />
-                Product Description:
-                <input name="description" value={formData.description} onChange={handleChange} placeholder="Description" required className="input" />
-                MRP:
-                <input type="number" name="mrp" value={formData.mrp} onChange={handleChange} placeholder="MRP" required className="input" />
-                Discount:
-                <input type="number" name="discount" value={formData.discount} onChange={handleChange} placeholder="Discount (%)" required className="input" />
-                Discounted Price:
-                <input type="number" name="discountedPrice" value={formData.discountedPrice} readOnly className="input bg-gray-100" placeholder="Discounted Price" />
-                Stock:
-                <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="Stock" required className="input" />
-                Category:
-                <input name="category" value={formData.category} onChange={handleChange} placeholder="Category" required className="input" />
-                <input type="file" name="image" onChange={handleChange} accept="image/*" className="input" />
-                {previewImage && typeof previewImage === "string" && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-gray-500 mb-1">Image Preview:</p>
-                    <img src={previewImage} alt="Preview" className="w-32 h-32 object-cover rounded" />
-                  </div>
-                )}
-                <div className="col-span-2 flex justify-end gap-4 mt-4">
-                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                    Save Changes
-                  </button>
-                  <button type="button" onClick={() => setEditingProduct(null)} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                    Cancel
-                  </button>
-                </div>
-              </form>
+  <div>
+    <label className="block text-gray-700 font-medium mb-1">Product Name:</label>
+    <input
+      name="name"
+      value={formData.name}
+      onChange={handleChange}
+      placeholder="Name"
+      required
+      className="input w-full p-2 border border-gray-300 rounded-md"
+    />
+  </div>
+  <div>
+    <label className="block text-gray-700 font-medium mb-1">Product Description:</label>
+    <input
+      name="description"
+      value={formData.description}
+      onChange={handleChange}
+      placeholder="Description"
+      required
+      className="input w-full p-2 border border-gray-300 rounded-md"
+    />
+  </div>
+  <div>
+    <label className="block text-gray-700 font-medium mb-1">MRP:</label>
+    <input
+      type="number"
+      name="mrp"
+      value={formData.mrp}
+      onChange={handleChange}
+      placeholder="MRP"
+      required
+      className="input w-full p-2 border border-gray-300 rounded-md"
+    />
+  </div>
+  <div>
+    <label className="block text-gray-700 font-medium mb-1">Discount:</label>
+    <input
+      type="number"
+      name="discount"
+      value={formData.discount}
+      onChange={handleChange}
+      placeholder="Discount (%)"
+      required
+      className="input w-full p-2 border border-gray-300 rounded-md"
+    />
+  </div>
+  <div>
+    <label className="block text-gray-700 font-medium mb-1">Discounted Price:</label>
+    <input
+      type="number"
+      name="discountedPrice"
+      value={formData.discountedPrice}
+      readOnly
+      className="input w-full p-2 border border-gray-100 bg-gray-100 rounded-md"
+      placeholder="Discounted Price"
+    />
+  </div>
+  <div>
+    <label className="block text-gray-700 font-medium mb-1">Stock:</label>
+    <input
+      type="number"
+      name="stock"
+      value={formData.stock}
+      onChange={handleChange}
+      placeholder="Stock"
+      required
+      className="input w-full p-2 border border-gray-300 rounded-md"
+    />
+  </div>
+  <div>
+    <label className="block text-gray-700 font-medium mb-1">Category:</label>
+    <input
+      name="category"
+      value={formData.category}
+      onChange={handleChange}
+      placeholder="Category"
+      required
+      className="input w-full p-2 border border-gray-300 rounded-md"
+    />
+  </div>
+  <div>
+    <label className="block text-gray-700 font-medium mb-1">Product Image:</label>
+    <input
+      type="file"
+      name="image"
+      onChange={handleChange}
+      accept="image/*"
+      className="input w-full p-2 border border-gray-300 rounded-md"
+    />
+  </div>
+  {previewImage && typeof previewImage === "string" && (
+    <div className="col-span-2">
+      <p className="text-sm text-gray-500 mb-1">Image Preview:</p>
+      <img src={previewImage} alt="Preview" className="w-32 h-32 object-cover rounded" />
+    </div>
+  )}
+  <div className="col-span-2 flex justify-end gap-4 mt-4">
+    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+      Save Changes
+    </button>
+    <button type="button" onClick={() => setEditingProduct(null)} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+      Cancel
+    </button>
+  </div>
+</form>
             </div>
           </div>
         )}
