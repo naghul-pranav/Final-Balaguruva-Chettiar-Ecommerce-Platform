@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import { useNavigate } from "react-router-dom";
-import { Edit2, Trash2, Plus, DollarSign, Tag, Box, X, RotateCcw } from "lucide-react";
+import { Edit2, Trash2, Plus, DollarSign, Tag, Box, X, RotateCcw, Loader2 } from "lucide-react"; // Add Loader2
 
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
@@ -14,6 +14,8 @@ const ManageProducts = () => {
   const [productToDelete, setProductToDelete] = useState(null);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [productToRestore, setProductToRestore] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false); // Add loading state for delete
+  const [isRestoring, setIsRestoring] = useState(false); // Add loading state for restore
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,7 +27,7 @@ const ManageProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/products");
+      const res = await fetch("https://balaguruva-admin.onrender.com/api/products");
       if (!res.ok) throw new Error("Failed to fetch products");
       const data = await res.json();
       setProducts(data);
@@ -37,7 +39,7 @@ const ManageProducts = () => {
 
   const fetchArchivedProducts = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/deleted-products");
+      const res = await fetch("https://balaguruva-admin.onrender.com/api/deleted-products");
       if (!res.ok) throw new Error("Failed to fetch archived products");
       const data = await res.json();
       if (data.success) {
@@ -116,7 +118,7 @@ const ManageProducts = () => {
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/products/${editingProduct}`, {
+      const res = await fetch(`https://balaguruva-admin.onrender.com/api/products/${editingProduct}`, {
         method: "PUT",
         body: form,
       });
@@ -142,17 +144,28 @@ const ManageProducts = () => {
   };
 
   const confirmDelete = async () => {
-    const res = await fetch(`http://localhost:5000/api/products/${productToDelete}`, {
-      method: "DELETE",
-    });
-    if (res.ok) {
-      fetchProducts();
-      if (viewMode === "archived") {
-        fetchArchivedProducts();
+    setIsDeleting(true); // Set loading state to true
+    try {
+      const res = await fetch(`https://balaguruva-admin.onrender.com/api/products/${productToDelete}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await fetchProducts();
+        if (viewMode === "archived") {
+          await fetchArchivedProducts();
+        }
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to delete product: ${errorData.error || "Unknown error"}`);
       }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("Failed to delete product");
+    } finally {
+      setIsDeleting(false); // Reset loading state
+      setShowConfirmModal(false);
+      setProductToDelete(null);
     }
-    setShowConfirmModal(false);
-    setProductToDelete(null);
   };
 
   const handleRestoreClick = (product) => {
@@ -161,8 +174,9 @@ const ManageProducts = () => {
   };
 
   const confirmRestore = async () => {
+    setIsRestoring(true); // Set loading state to true
     try {
-      const res = await fetch(`http://localhost:5000/api/products/restore/${productToRestore._id}`, {
+      const res = await fetch(`https://balaguruva-admin.onrender.com/api/products/restore/${productToRestore._id}`, {
         method: "POST",
       });
       if (res.ok) {
@@ -175,9 +189,11 @@ const ManageProducts = () => {
     } catch (error) {
       console.error("Error restoring product:", error);
       alert("Failed to restore product");
+    } finally {
+      setIsRestoring(false); // Reset loading state
+      setShowRestoreModal(false);
+      setProductToRestore(null);
     }
-    setShowRestoreModal(false);
-    setProductToRestore(null);
   };
 
   return (
@@ -414,14 +430,26 @@ const ManageProducts = () => {
                 <button
                   onClick={() => setShowConfirmModal(false)}
                   className="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800"
+                  disabled={isDeleting} // Disable Cancel button while deleting
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDelete}
-                  className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white"
+                  className={`px-4 py-2 rounded-md flex items-center gap-2 ${
+                    isDeleting
+                      ? "bg-red-400 cursor-not-allowed"
+                      : "bg-red-600 hover:bg-red-700"
+                  } text-white`}
+                  disabled={isDeleting} // Disable Delete button while deleting
                 >
-                  Delete
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="animate-spin" size={16} /> Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
                 </button>
               </div>
             </div>
@@ -440,14 +468,26 @@ const ManageProducts = () => {
                 <button
                   onClick={() => setShowRestoreModal(false)}
                   className="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800"
+                  disabled={isRestoring} // Disable Cancel button while restoring
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmRestore}
-                  className="px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white"
+                  className={`px-4 py-2 rounded-md flex items-center gap-2 ${
+                    isRestoring
+                      ? "bg-green-400 cursor-not-allowed"
+                      : "bg-green-600 hover:bg-green-700"
+                  } text-white`}
+                  disabled={isRestoring} // Disable Restore button while restoring
                 >
-                  Restore
+                  {isRestoring ? (
+                    <>
+                      <Loader2 className="animate-spin" size={16} /> Restoring...
+                    </>
+                  ) : (
+                    "Restore"
+                  )}
                 </button>
               </div>
             </div>

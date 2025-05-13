@@ -91,7 +91,7 @@ const AdminHome = () => {
 
     const loadDashboardData = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/products');
+            const response = await fetch('https://balaguruva-admin.onrender.com/api/products');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -105,7 +105,7 @@ const AdminHome = () => {
 
     const loadContactsData = async (retry = true) => {
         try {
-            const response = await fetch('http://localhost:5000/api/contacts');
+            const response = await fetch('https://balaguruva-admin.onrender.com/api/contacts');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -128,7 +128,7 @@ const AdminHome = () => {
 
     const loadUsersData = async (retry = true) => {
         try {
-            const response = await fetch('http://localhost:5000/api/users');
+            const response = await fetch('https://balaguruva-admin.onrender.com/api/users');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -151,7 +151,7 @@ const AdminHome = () => {
 
     const loadOrdersData = async (retry = true) => {
         try {
-            const response = await fetch('http://localhost:5000/api/orders/admin/all');
+            const response = await fetch('https://balaguruva-admin.onrender.com/api/orders/admin/all');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
