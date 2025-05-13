@@ -340,6 +340,7 @@ const AnalyticsDashboard = ({ orders }) => {
 };
 
 // Enhanced OrderDetailsModal component
+// Enhanced OrderDetailsModal component
 const OrderDetailsModal = ({ order, onClose, onStatusChange, statusOptions, getStatusBadgeStyle, formatDate, customers }) => {
   const [localStatus, setLocalStatus] = useState(order?.orderStatus || "processing");
   const [updating, setUpdating] = useState(false);
@@ -375,6 +376,20 @@ const OrderDetailsModal = ({ order, onClose, onStatusChange, statusOptions, getS
   // Calculate order metrics
   const itemCount = order.orderItems?.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const daysElapsed = Math.floor((new Date() - new Date(order.createdAt)) / (1000 * 60 * 60 * 24));
+
+  // Helper to get display text for payment method
+  const getPaymentMethodDisplay = (method) => {
+    switch (method) {
+      case "cod":
+        return "Cash on Delivery";
+      case "razorpay":
+        return "Razorpay";
+      case "upi":
+        return "UPI";
+      default:
+        return "Unknown";
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
@@ -430,8 +445,8 @@ const OrderDetailsModal = ({ order, onClose, onStatusChange, statusOptions, getS
                 
                 <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg p-4 shadow-sm transition-transform hover:scale-105 duration-300">
                   <p className="text-xs text-violet-600 font-medium">ORDER TOTAL</p>
-                  <p className="text-2xl font-bold text-violet-700">₹{order.totalPrice.toFixed(2)}</p>
-                  <p className="text-xs text-violet-600 mt-1">Inc. ₹{order.deliveryPrice?.toFixed(2) || '0.00'} delivery</p>
+                  <p className="text-2xl font-bold text-violet-700">INR {order.totalPrice.toFixed(2)}</p>
+                  <p className="text-xs text-violet-600 mt-1">Inc. INR {order.deliveryPrice?.toFixed(2) || '0.00'} delivery</p>
                 </div>
                 
                 <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 shadow-sm transition-transform hover:scale-105 duration-300">
@@ -523,6 +538,7 @@ const OrderDetailsModal = ({ order, onClose, onStatusChange, statusOptions, getS
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gradient-to-r from-gray-100 to-gray-200">
                       <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
@@ -532,25 +548,44 @@ const OrderDetailsModal = ({ order, onClose, onStatusChange, statusOptions, getS
                     <tbody className="bg-white divide-y divide-gray-200">
                       {order.orderItems && order.orderItems.map((item, idx) => (
                         <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gradient-to-r from-gray-50 to-indigo-50/20'}>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            {item.image ? (
+                              <img
+                                src={`data:image/png;base64,${item.image}`}
+                                alt={item.name}
+                                className="w-12 h-12 object-cover rounded-md"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = 'https://via.placeholder.com/48?text=No+Image';
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src="https://via.placeholder.com/48?text=No+Image"
+                                alt="No Image"
+                                className="w-12 h-12 object-cover rounded-md"
+                              />
+                            )}
+                          </td>
                           <td className="px-4 py-2 text-sm text-gray-900">{item.name}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">₹{item.discountedPrice.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900">INR {item.discountedPrice.toFixed(2)}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">{item.quantity}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">₹{(item.discountedPrice * item.quantity).toFixed(2)}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900">INR {(item.discountedPrice * item.quantity).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="bg-gradient-to-r from-gray-50 to-indigo-50/30">
-                        <td colSpan="3" className="px-4 py-2 text-sm font-medium text-right text-gray-700">Subtotal</td>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900">₹{order.subtotal ? order.subtotal.toFixed(2) : "N/A"}</td>
+                        <td colSpan="4" className="px-4 py-2 text-sm font-medium text-right text-gray-700">Subtotal</td>
+                        <td className="px-4 py-2 text-sm font-medium text-gray-900">INR {order.subtotal ? order.subtotal.toFixed(2) : "N/A"}</td>
                       </tr>
                       <tr className="bg-gradient-to-r from-gray-50 to-indigo-50/30">
-                        <td colSpan="3" className="px-4 py-2 text-sm font-medium text-right text-gray-700">Delivery Fee</td>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900">₹{order.deliveryPrice ? order.deliveryPrice.toFixed(2) : "0.00"}</td>
+                        <td colSpan="4" className="px-4 py-2 text-sm font-medium text-right text-gray-700">Delivery Fee</td>
+                        <td className="px-4 py-2 text-sm font-medium text-gray-900">INR {order.deliveryPrice ? order.deliveryPrice.toFixed(2) : "0.00"}</td>
                       </tr>
                       <tr className="bg-gradient-to-r from-indigo-50 to-purple-50">
-                        <td colSpan="3" className="px-4 py-2 text-base font-bold text-right text-gray-800">Total</td>
-                        <td className="px-4 py-2 text-base font-bold text-gray-900">₹{order.totalPrice.toFixed(2)}</td>
+                        <td colSpan="4" className="px-4 py-2 text-base font-bold text-right text-gray-800">Total</td>
+                        <td className="px-4 py-2 text-base font-bold text-gray-900">INR {order.totalPrice.toFixed(2)}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -559,7 +594,8 @@ const OrderDetailsModal = ({ order, onClose, onStatusChange, statusOptions, getS
               
               <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p className="text-sm">
-                  <span className="font-semibold">Payment Method:</span> {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Razorpay'}
+                  <span className="font-semibold">Payment Method:</span>{" "}
+                  {getPaymentMethodDisplay(order.paymentMethod)}{" "}
                   <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium" style={getStatusBadgeStyle(order.paymentStatus || 'pending')}>
                     {order.paymentStatus || 'pending'}
                   </span>

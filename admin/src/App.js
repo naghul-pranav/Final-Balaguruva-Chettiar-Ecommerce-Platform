@@ -7,6 +7,8 @@ import Login from './components/Login';
 import User from './components/user';
 import AdminOrdersPage from './components/order';
 import ArchivedProducts from "./components/ArchivedProducts";
+import MessagesPage from './components/MessagesPage'; // Import the new component
+import ScrollToTop from './components/ScrollToTop';
 
 const MAX_SESSION_TIME = 8 * 60 * 60 * 1000; // 8 hours
 
@@ -45,6 +47,7 @@ const PrivateRoute = ({ children }) => {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <div className="pt-20 min-h-screen bg-gray-50">
         <Routes>
           <Route path="/login" element={checkAuth() ? <Navigate to="/" replace /> : <Login />} />
@@ -53,6 +56,7 @@ function App() {
           <Route path="/manage-products" element={<PrivateRoute><ManageProducts /></PrivateRoute>} />
           <Route path="/orders" element={<PrivateRoute><AdminOrdersPage /></PrivateRoute>} />
           <Route path="/users" element={<PrivateRoute><User /></PrivateRoute>} />
+          <Route path="/messages" element={<PrivateRoute><MessagesPage /></PrivateRoute>} />
           <Route path="/archived-products" element={<PrivateRoute><ArchivedProducts /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

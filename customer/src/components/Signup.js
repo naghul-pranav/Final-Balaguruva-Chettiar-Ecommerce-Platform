@@ -140,6 +140,7 @@ const [serverCode, setServerCode] = useState(null);
       localStorage.setItem("user", JSON.stringify(response.data.user));
       setIsAuthenticated(true);
       navigate("/");
+      window.location.reload();
     }
   } catch (err) {
     setError(

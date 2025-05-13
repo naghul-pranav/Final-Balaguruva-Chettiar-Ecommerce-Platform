@@ -82,9 +82,13 @@ const BackToTopButton = () => {
 // Business Card Component
 const ContactCard = ({ t }) => {
   const handleDownload = () => {
-    // Logic to download vCard or contact information
-    alert('Contact card download functionality would be implemented here');
-  };
+  const link = document.createElement('a');
+  link.href = '/documents/Contact Card - Balaguruva Chettiar Sons Co.pdf';
+  link.download = 'Contact Card - Balaguruva Chettiar Sons Co.pdf'; // Optional: Specifies the downloaded file name
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
   
   return (
     <motion.div 
@@ -101,7 +105,7 @@ const ContactCard = ({ t }) => {
       <div className="space-y-3">
         <div className="flex items-center">
           <FaPhone className="mr-3 text-blue-200" /> 
-          <span>+91 98427 85175</span>
+          <span>+91 98427 85156</span>
         </div>
         <div className="flex items-center">
           <FaEnvelope className="mr-3 text-blue-200" /> 
@@ -233,37 +237,8 @@ const LocationMap = ({ t }) => {
           </div>
         </div>
       )}
+
       
-      {/* Map info card */}
-      <motion.div 
-        className="absolute top-4 left-4 md:top-6 md:left-6 p-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg z-20 max-w-[90%] md:max-w-xs"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.5 }}
-      >
-        <h4 className="font-bold text-blue-800 mb-1 text-sm md:text-base">Balaguruva Chettiar</h4>
-        <p className="text-xs md:text-sm text-gray-700">97, Agraharam Street, Erode</p>
-        <div className="flex mt-2 gap-2">
-          <motion.a 
-            href="https://www.google.com/maps/dir/?api=1&destination=Agraharam+Street+Erode++Tamil+Nadu" 
-            target="_blank"
-            rel="noopener noreferrer"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="text-xs bg-blue-600 text-white py-1 px-2 rounded flex items-center"
-          >
-            <FaMapMarkerAlt className="mr-1" size={10} /> {t('Directions', 'contact')}
-          </motion.a>
-          <motion.button 
-            onClick={() => window.location.href = "tel:+919842785157"}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="text-xs bg-green-600 text-white py-1 px-2 rounded flex items-center"
-          >
-            <FaPhone className="mr-1" size={10} /> {t('Call', 'contact')}
-          </motion.button>
-        </div>
-      </motion.div>
       
       {/* Responsive map container with aspect ratio */}
       <div className="w-full aspect-[16/9] md:aspect-[21/9] lg:aspect-[21/9] relative">
@@ -315,21 +290,21 @@ const ContactPage = () => {
   const contactNumbers = [
     { 
       type: t('Office', 'contact'), 
-      number: "+91 9994955782", 
+      number: "+91 9842785156", 
       icon: FaPhone, 
       iconColor: "text-emerald-600", 
       bgColor: "from-emerald-50 to-teal-50" 
     },
     { 
       type: t('Mobile', 'contact'), 
-      number: "+91 9876543210", 
+      number: "+91 9842785156", 
       icon: FaMobile, 
       iconColor: "text-blue-600", 
       bgColor: "from-blue-50 to-indigo-50" 
     },
     { 
       type: t('WhatsApp', 'contact'), 
-      number: "+91 9994955782", 
+      number: "+91 9842785156", 
       icon: FaWhatsapp, 
       iconColor: "text-green-600", 
       bgColor: "from-green-50 to-emerald-50" 
@@ -480,9 +455,9 @@ const ContactPage = () => {
     }
   };
 
-  const handleEmailClick = () => window.location.href = "mailto:balaguruva@gmail.com";
-  const handlePhoneClick = () => window.location.href = "tel:+919842785157";
-  const handleAddressClick = () => window.open("https://www.google.com/maps/search/?api=1&query=124/4+Gandhi+Nagar+Sukkaliyur+Karur,+Tamil+Nadu+639003", "_blank");
+  const handleEmailClick = () => window.location.href = "mailto:contact.balaguruvachettiarsons@gmail.com";
+  const handlePhoneClick = () => window.location.href = "tel:+919842785156";
+  const handleAddressClick = () => window.open("https://www.google.com/maps/dir//K.+Balaguruva+Chettiar+Firm,+90+Agraharam+Street,+Opposite+To+Rajan+Textiles,+Erode,+Tamil+Nadu+638001/@11.3408616,77.7247373,17z/data=!4m8!4m7!1m0!1m5!1m1!1s0x3ba96f440bae951d:0x91c04bcc1158f4c9!2m2!1d77.7296082!2d11.3408564?entry=ttu&g_ep=EgoyMDI1MDUxMS4wIKXMDSoASAFQAw%3D%3D", "_blank");
 
   return (
     <motion.div initial="hidden" animate="show" variants={containerVariants} className="p-6 min-h-screen relative">

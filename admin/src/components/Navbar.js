@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, ListChecks, ShoppingBag, Users,
+  Home, ListChecks, ShoppingBag, Users, MessageSquare, // Add MessageSquare icon
   Menu, X, LogOut, UserCircle
 } from 'lucide-react';
 
@@ -111,6 +111,11 @@ const Navbar = () => {
                 <li>
                   <Link to="/users" onClick={closeMenuOnClick} className="flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600">
                     <Users className="w-5 h-5" /><span>Users</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/messages" onClick={closeMenuOnClick} className="flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600">
+                    <MessageSquare className="w-5 h-5" /><span>Messages</span>
                   </Link>
                 </li>
               </ul>

@@ -250,6 +250,10 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
     syncCart();
   }, [cart, user]);
 
+  useEffect(() => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}, [step]);
+
   const handleSuccessfulPayment = (order, method) => {
     console.log("Received successful payment:", { order, method }); // Debug
     setSavedOrder(order);
@@ -455,13 +459,14 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
           Looks like you haven't added anything to your cart yet. Browse our products and find something you'll love!
         </p>
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
-        >
-          <FaArrowLeft />
-          <span>Continue Shopping</span>
-        </motion.button>
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.95 }}
+  onClick={() => (window.location.href = '/products')} // Fallback if not using React Router
+  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
+>
+  <FaArrowLeft />
+  <span>Continue Shopping</span>
+</motion.button>
       </motion.div>
     );
   }
@@ -894,139 +899,251 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
   };
 
   const handleGenerateInvoice = () => {
-    setIsGeneratingPdf(true);
+  setIsGeneratingPdf(true);
 
-    setTimeout(() => {
-      try {
-        const doc = new jsPDF();
+  setTimeout(() => {
+    try {
+      const doc = new jsPDF();
 
-        const primaryColor = [59, 130, 246];
-        const secondaryColor = [107, 114, 128];
-        const lightGray = [229, 231, 235];
-
-        doc.setFillColor(249, 250, 251);
-        doc.rect(0, 0, 210, 40, "F");
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(22);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text("Balaguruva Chettiar", 105, 15, { align: "center" });
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-        doc.text("97, Agraharam Street, Erode", 105, 23, { align: "center" });
-        doc.text("Tamil Nadu, India - 638001", 105, 28, { align: "center" });
-        doc.text("Phone: +91 9842785156 | Email: contact.balaguruvachettiarsons@gmail.com", 105, 33, {
-          align: "center",
-        });
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(18);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text("INVOICE", 105, 50, { align: "center" });
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-
-        const today = new Date().toLocaleDateString();
-        doc.text(`Date: ${today}`, 20, 60);
-        doc.text(`Invoice #: ${savedOrder ? savedOrder.orderReference : orderReference}`, 20, 65);
-        doc.text(`Payment Method: ${getPaymentMethodDisplay(paymentMethod).name}`, 20, 70);
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.text("Bill To:", 140, 60);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.text(`${shippingInfo.fullName}`, 140, 65);
-        doc.text(`${shippingInfo.addressLine1}`, 140, 70);
-        doc.text(`${shippingInfo.city}, ${shippingInfo.postalCode}`, 140, 75);
-        doc.text(`Email: ${shippingInfo.email || (user ? user.email : "")}`, 140, 80);
-
-        doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2]);
-        doc.setLineWidth(0.5);
-        doc.line(20, 85, 190, 85);
-
-        doc.autoTable({
-          startY: 90,
-          head: [["Item", "Quantity", "Price", "Total"]],
-          body: cart.map((item) => [
-            item.name,
-            item.quantity.toString(),
-            `₹${item.discountedPrice.toFixed(2)}`,
-            `₹${(item.discountedPrice * item.quantity).toFixed(2)}`,
-          ]),
-          theme: "grid",
-          headStyles: {
-            fillColor: [59, 130, 246],
-            textColor: [255, 255, 255],
-            fontStyle: "bold",
-          },
-          columnStyles: {
-            0: { cellWidth: 80 },
-            1: { cellWidth: 30, halign: "center" },
-            2: { cellWidth: 30, halign: "right" },
-            3: { cellWidth: 30, halign: "right" },
-          },
-          styles: {
-            font: "helvetica",
-            fontSize: 10,
-          },
-          alternateRowStyles: {
-            fillColor: [249, 250, 251],
-          },
-        });
-
-        const finalY = doc.lastAutoTable.finalY + 10;
-
-        doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2]);
-        doc.setLineWidth(0.5);
-
-        const summaryX = 120;
-        const summaryWidth = 70;
-        let currentY = finalY;
-
-        doc.setFont("helvetica", "normal");
-        doc.text("Subtotal:", summaryX, currentY);
-        doc.text(`₹${totalPrice.toFixed(2)}`, summaryX + summaryWidth, currentY, { align: "right" });
-        currentY += 7;
-
-        doc.text("Delivery:", summaryX, currentY);
-        doc.text(deliveryMethod === "express" ? "₹100.00" : "Free", summaryX + summaryWidth, currentY, {
-          align: "right",
-        });
-        currentY += 7;
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.text("Total:", summaryX, currentY);
-        doc.text(
-          `₹${(totalPrice + (deliveryMethod === "express" ? 100 : 0)).toFixed(2)}`,
-          summaryX + summaryWidth,
-          currentY,
-          { align: "right" }
-        );
-
-        const pageHeight = doc.internal.pageSize.height;
-        doc.setFont("helvetica", "italic");
-        doc.setFontSize(10);
-        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-        doc.text("Thank you for shopping with Balaguruva Chettiar Son's Co!", 105, pageHeight - 30, {
-          align: "center",
-        });
-        doc.text("We appreciate your business.", 105, pageHeight - 25, { align: "center" });
-
-        doc.save(`Invoice_${savedOrder ? savedOrder.orderReference : orderReference}.pdf`);
-      } catch (error) {
-        console.error("Error generating PDF:", error);
-      } finally {
-        setIsGeneratingPdf(false);
+      // Validate cart
+      if (!Array.isArray(cart) || cart.length === 0) {
+        throw new Error("Cart is empty or invalid. Cannot generate invoice.");
       }
-    }, 500);
-  };
+
+      // Validate cart items
+      cart.forEach((item, index) => {
+        if (!item.name || typeof item.quantity !== "number" || typeof item.discountedPrice !== "number") {
+          throw new Error(`Invalid cart item at index ${index}: ${JSON.stringify(item)}`);
+        }
+      });
+
+      // Gradient background simulation (blue-50 to indigo-50)
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      for (let i = 0; i <= 40; i++) {
+        const r = 219 + (224 - 219) * (i / 40); // blue-50 to indigo-50
+        const g = 234 + (231 - 234) * (i / 40);
+        const b = 254 + (255 - 254) * (i / 40);
+        doc.setFillColor(r, g, b);
+        doc.rect(0, i, pageWidth, 1, "F");
+      }
+
+      // Header: Balaguruva Chettiar
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor("#3b82f6"); // Tailwind blue-600
+      doc.text("Balaguruva Chettiar Son's Co", pageWidth / 2, 15, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor("#6b7280"); // Tailwind gray-500
+      doc.text("97, Agraharam Street, Erode, Tamil Nadu, India - 638001", pageWidth / 2, 23, { align: "center" });
+      doc.text("Phone: +91 9842785156 | Email: contact.balaguruvachettiarsons@gmail.com", pageWidth / 2, 28, { align: "center" });
+
+      // Invoice Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor("#3b82f6"); // Tailwind blue-600
+      doc.text("INVOICE", pageWidth / 2, 45, { align: "center" });
+
+      // Invoice Details (Date, Invoice #, Payment Method)
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor("#6b7280"); // Tailwind gray-500
+      const today = new Date().toLocaleDateString();
+      doc.text(`Date: ${today}`, 20, 55);
+      doc.text(`Invoice #: ${savedOrder ? savedOrder.orderReference : orderReference}`, 20, 60);
+      doc.text(`Payment Method: ${getPaymentMethodDisplay(paymentMethod).name || "N/A"}`, 20, 65);
+
+      // Bill To (Shipping Info)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Bill To:", 140, 55);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`${shippingInfo.fullName || "N/A"}`, 140, 60);
+      doc.text(`${shippingInfo.addressLine1 || "N/A"}`, 140, 65);
+      doc.text(`${shippingInfo.city || "N/A"}, ${shippingInfo.postalCode || "N/A"}`, 140, 70);
+      doc.text(`Email: ${shippingInfo.email || user?.email || "N/A"}`, 140, 75);
+
+      // Separator Line
+      doc.setDrawColor("#e5e7eb"); // Tailwind gray-200
+      doc.setLineWidth(0.5);
+      doc.line(20, 80, 190, 80);
+
+      // Order Details Section Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor("#3b82f6"); // Tailwind blue-500
+      doc.text("Order Details", 20, 90);
+
+      // Items Section (Styled like a card)
+      const itemsHeight = 10 + cart.length * 10;
+      doc.setFillColor("#ffffff"); // Tailwind white
+      doc.setDrawColor("#e5e7eb"); // Tailwind gray-200
+      doc.roundedRect(20, 95, 170, itemsHeight, 3, 3, "FD");
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor("#6b7280"); // Tailwind gray-500
+      doc.text("Items", 25, 102);
+
+      doc.autoTable({
+        startY: 105,
+        head: [["", "Item", "Qty", "Price", "Total"]],
+        body: cart.map((item) => [
+          "",
+          item.name || "N/A",
+          (item.quantity || 0).toString(),
+          `INR ${(item.discountedPrice || 0).toFixed(2)}`, // Use "INR " instead of ₹
+          `INR ${((item.discountedPrice || 0) * (item.quantity || 0)).toFixed(2)}`, // Use "INR " instead of ₹
+        ]),
+        theme: "plain",
+        headStyles: {
+          fillColor: "#ffffff",
+          textColor: "#6b7280",
+          fontStyle: "normal",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fillColor: "#ffffff",
+          textColor: "#374151", // Tailwind gray-800
+          fontSize: 10,
+        },
+        columnStyles: {
+          0: { cellWidth: 5 },
+          1: { cellWidth: 75 }, // Slightly reduce to give more space to price columns
+          2: { cellWidth: 20, halign: "center" },
+          3: { cellWidth: 35, halign: "right" }, // Increase width for better alignment
+          4: { cellWidth: 35, halign: "right" }, // Increase width for better alignment
+        },
+        styles: {
+          font: "helvetica",
+          fontSize: 10,
+          cellPadding: 2,
+        },
+        didDrawCell: (data) => {
+          if (data.row.index > -1 && data.row.section === "body") {
+            doc.setDrawColor("#e5e7eb");
+            doc.setLineWidth(0.2);
+            const y = data.cell.y + data.cell.height;
+            doc.line(data.cell.x, y, data.cell.x + 165, y);
+          }
+        },
+      });
+
+      let currentY = (doc.lastAutoTable.finalY || 105 + itemsHeight) + 10;
+
+      // Shipping Address and Delivery Method (Side by Side)
+      const cardWidth = 80;
+      const cardHeight = 40;
+
+      // Shipping Address Card
+      doc.setFillColor("#ffffff");
+      doc.setDrawColor("#e5e7eb");
+      doc.roundedRect(20, currentY, cardWidth, cardHeight, 3, 3, "FD");
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor("#6b7280");
+      doc.text("Shipping Address", 25, currentY + 7);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor("#374151");
+      doc.text(`${shippingInfo.fullName || "N/A"}`, 25, currentY + 14);
+      doc.text(`${shippingInfo.addressLine1 || "N/A"}`, 25, currentY + 19);
+      doc.text(`${shippingInfo.city || "N/A"}, ${shippingInfo.postalCode || "N/A"}`, 25, currentY + 24);
+      doc.text(`${user?.email || shippingInfo.email || "N/A"}`, 25, currentY + 29);
+
+      // Delivery Method Card
+      doc.setFillColor("#ffffff");
+      doc.setDrawColor("#e5e7eb");
+      doc.roundedRect(110, currentY, cardWidth, cardHeight, 3, 3, "FD");
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor("#6b7280");
+      doc.text("Delivery Method", 115, currentY + 7);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor("#374151");
+      doc.text(
+        deliveryMethod === "express" ? "Express Delivery (1-2 days)" : "Standard Delivery (3-5 days)",
+        115,
+        currentY + 14
+      );
+      doc.text(
+        deliveryMethod === "express" ? "Priority shipping with tracking" : "Free shipping with tracking",
+        115,
+        currentY + 19
+      );
+
+      currentY += cardHeight + 10;
+
+      // Payment Summary Card
+      doc.setFillColor("#ffffff");
+      doc.setDrawColor("#e5e7eb");
+      doc.roundedRect(20, currentY, 170, 50, 3, 3, "FD");
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor("#6b7280");
+      doc.text("Payment Summary", 25, currentY + 7);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor("#374151");
+
+      doc.text("Subtotal", 25, currentY + 14);
+      doc.text(`INR ${(totalPrice || 0).toFixed(2)}`, 185, currentY + 14, { align: "right" });
+
+      doc.text("Delivery", 25, currentY + 19);
+      doc.setTextColor(deliveryMethod === "standard" ? "#16a34a" : "#374151"); // Tailwind green-600 or gray-800
+      doc.text(deliveryMethod === "express" ? "INR 100.00" : "Free", 185, currentY + 19, { align: "right" });
+
+      doc.setTextColor("#374151");
+      doc.text("Payment Method", 25, currentY + 24);
+      const paymentMethodText = getPaymentMethodDisplay(paymentMethod).name || "N/A";
+      doc.text(paymentMethodText, 185, currentY + 24, { align: "right" });
+
+      doc.setDrawColor("#e5e7eb");
+      doc.setLineWidth(0.2);
+      doc.line(25, currentY + 30, 185, currentY + 30);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor("#3b82f6");
+      doc.text("Total", 25, currentY + 37);
+      doc.text(
+        `INR ${(totalPrice + (deliveryMethod === "express" ? 100 : 0)).toFixed(2)}`,
+        185,
+        currentY + 37,
+        { align: "right" }
+      );
+
+      currentY += 60;
+
+      // Footer
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(10);
+      doc.setTextColor("#6b7280");
+      doc.text("Thank you for shopping with Balaguruva Chettiar Son's Co!", pageWidth / 2, pageHeight - 30, {
+        align: "center",
+      });
+      doc.text("We appreciate your business.", pageWidth / 2, pageHeight - 25, { align: "center" });
+
+      // Save the PDF
+      doc.save(`Invoice_${savedOrder ? savedOrder.orderReference : orderReference}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      setError("Failed to generate invoice. Please try again.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }, 500);
+};
 
   const renderConfirmation = () => (
     <motion.div

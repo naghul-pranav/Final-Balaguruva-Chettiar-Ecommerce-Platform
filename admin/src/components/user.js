@@ -44,6 +44,8 @@ ChartJS.register(
 
 const UserPage = () => {
   const [users, setUsers] = useState([]);
+  const [deletedUsers, setDeletedUsers] = useState([]);
+  const [viewMode, setViewMode] = useState('active'); // 'active' or 'deleted'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,6 +53,8 @@ const UserPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage, setUsersPerPage] = useState(10);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [cartItems, setCartItems] = useState([]); // State to store fetched cart items
+  const [userOrders, setUserOrders] = useState([]); // State to store fetched orders
   const [signupData, setSignupData] = useState({});
   const [refreshing, setRefreshing] = useState(false);
   const [dateRange, setDateRange] = useState({ start: null, end: null });
@@ -71,7 +75,20 @@ const UserPage = () => {
 
   useEffect(() => {
     fetchAllData();
-  }, []);
+    if (viewMode === 'deleted') {
+      fetchDeletedUsers();
+    }
+  }, [viewMode]);
+
+  // Fetch cart data and orders when a user is selected
+  useEffect(() => {
+    if (selectedUser) {
+      fetchCartData(selectedUser.email);
+      fetchUserOrders(selectedUser._id);
+    } else {
+      setUserOrders([]); // Reset orders when modal is closed
+    }
+  }, [selectedUser]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -83,6 +100,21 @@ const UserPage = () => {
       setLoading(false);
     } catch (err) {
       setError(err.message || 'Failed to fetch users');
+      setLoading(false);
+    }
+  };
+
+  const fetchDeletedUsers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API_URL}/api/deleted-users`);
+      if (response.data.success) {
+        setDeletedUsers(response.data.users);
+      }
+      setLoading(false);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch deleted users');
       setLoading(false);
     }
   };
@@ -103,6 +135,35 @@ const UserPage = () => {
       console.error("Error fetching analytics:", err);
       addNotification("Failed to load analytics", "error");
       setAnalyticsLoading(false);
+    }
+  };
+
+  const fetchCartData = async (userId) => {
+    try {
+      const response = await axios.get(`${API_URL}/api/carts/${userId}`);
+      setCartItems(response.data.items || []);
+    } catch (err) {
+      console.error("Error fetching cart data:", err);
+      addNotification("Failed to load cart data", "error");
+      setCartItems([]);
+    }
+  };
+
+  // Fetch orders for the selected user
+  const fetchUserOrders = async (userId) => {
+    try {
+      // Since /api/orders requires authentication, we'll use the unauthenticated endpoint
+      const response = await axios.get(`${API_URL}/api/orders/admin/all`);
+      const orders = response.data.orders || [];
+      // Filter orders for the selected user
+      const userSpecificOrders = orders.filter(order => 
+        order.user && order.user.toString() === userId
+      );
+      setUserOrders(userSpecificOrders);
+    } catch (err) {
+      console.error("Error fetching user orders:", err);
+      addNotification("Failed to load order history", "error");
+      setUserOrders([]);
     }
   };
 
@@ -283,9 +344,12 @@ const UserPage = () => {
     setRefreshing(true);
     try {
       await fetchAllData();
+      if (viewMode === 'deleted') {
+        await fetchDeletedUsers();
+      }
       addNotification('Data refreshed successfully');
     } catch (err) {
-      addNotification('Failed to refresh data', 'error');
+      addNotification('Failed to refresh data', "error");
     }
     setRefreshing(false);
   };
@@ -298,8 +362,9 @@ const UserPage = () => {
   };
 
   const sortedUsers = React.useMemo(() => {
-    if (!users.length) return [];
-    const sortableUsers = [...users];
+    const userList = viewMode === 'active' ? users : deletedUsers;
+    if (!userList.length) return [];
+    const sortableUsers = [...userList];
     sortableUsers.sort((a, b) => {
       const aValue = a[sortConfig.key] ? a[sortConfig.key].toString().toLowerCase() : '';
       const bValue = b[sortConfig.key] ? b[sortConfig.key].toString().toLowerCase() : '';
@@ -308,7 +373,7 @@ const UserPage = () => {
       return 0;
     });
     return sortableUsers;
-  }, [users, sortConfig]);
+  }, [users, deletedUsers, sortConfig, viewMode]);
 
   const filteredUsers = React.useMemo(() => {
     return sortedUsers.filter(user => 
@@ -323,24 +388,40 @@ const UserPage = () => {
   const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
 
   const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Sign-up Date'];
+    const headers = ['Name', 'Email', 'Sign-up Date', 'Status'];
     const csvRows = filteredUsers.map(user => [
       user.name || 'N/A',
       user.email,
-      new Date(user.createdAt).toISOString().split('T')[0]
+      new Date(user.createdAt).toISOString().split('T')[0],
+      viewMode === 'active' ? 'Active' : 'Deleted'
     ].join(','));
     const csvContent = [headers.join(','), ...csvRows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'users_data.csv';
+    link.download = viewMode === 'active' ? 'active_users_data.csv' : 'deleted_users_data.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Enhance chart options with more effects
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A'; // Handle invalid dates
+    return date.toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone: 'Asia/Kolkata',
+      hour12: true
+    });
+  };
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -397,7 +478,6 @@ const UserPage = () => {
     }
   };
 
-  // Enhanced donut chart options
   const donutOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -457,7 +537,6 @@ const UserPage = () => {
     );
   };
 
-  // New function to render the email distribution chart
   const renderEmailDistributionChart = () => {
     if (!distributionData.datasets) return null;
     return (
@@ -499,15 +578,12 @@ const UserPage = () => {
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
-      {/* Add Navbar component */}
       <Navbar />
       
       <div className="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto">
-        {/* Header with responsive layout */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
           
-          {/* Controls with responsive wrapping */}
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
               <input
@@ -519,6 +595,29 @@ const UserPage = () => {
               />
             </div>
             
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('active')}
+                className={`px-4 py-2 rounded-md ${
+                  viewMode === 'active'
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
+                    : 'bg-gray-200 text-gray-800'
+                } hover:from-indigo-600 hover:to-purple-700 hover:text-white transition-all`}
+              >
+                Active Users
+              </button>
+              <button
+                onClick={() => setViewMode('deleted')}
+                className={`px-4 py-2 rounded-md ${
+                  viewMode === 'deleted'
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
+                    : 'bg-gray-200 text-gray-800'
+                } hover:from-indigo-600 hover:to-purple-700 hover:text-white transition-all`}
+              >
+                Deleted Users
+              </button>
+            </div>
+
             <button
               onClick={refreshUserData}
               disabled={refreshing}
@@ -539,9 +638,7 @@ const UserPage = () => {
           </div>
         </div>
 
-        {/* Dashboard cards - 3 columns on desktop, 2 on tablet, 1 on mobile */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-          {/* User statistic cards here */}
           <div className="bg-gradient-to-br from-white to-blue-50 p-4 rounded-lg shadow-md border border-indigo-100 transform transition-all hover:scale-105">
             <h3 className="text-gray-500 text-sm font-medium">Total Users</h3>
             <p className="text-2xl font-bold text-gray-900">{userStatistics.totalUsers || 0}</p>
@@ -563,7 +660,6 @@ const UserPage = () => {
           </div>
         </div>
 
-        {/* Chart controls */}
         <div className="mb-4 flex justify-end">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-1 inline-flex">
             <button
@@ -591,7 +687,6 @@ const UserPage = () => {
           </div>
         </div>
 
-        {/* Analytics section with responsive chart containers */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white p-4 rounded-lg shadow-md border border-indigo-100 transition-all duration-300 hover:shadow-lg">
             <h3 className="text-lg font-semibold mb-4 text-gray-800">User Growth</h3>
@@ -608,7 +703,6 @@ const UserPage = () => {
           </div>
         </div>
 
-        {/* User activity patterns */}
         <div className="bg-white p-4 rounded-lg shadow-md border border-indigo-100 mb-8 transition-all duration-300 hover:shadow-lg">
           <h3 className="text-lg font-semibold mb-4 text-gray-800">User Activity Patterns</h3>
           <div className="h-40 md:h-60">
@@ -616,10 +710,11 @@ const UserPage = () => {
           </div>
         </div>
 
-        {/* User table with horizontal scroll for small screens */}
         <div className="bg-white rounded-lg shadow-md border border-indigo-100 overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <h2 className="text-xl font-semibold text-gray-800">User List</h2>
+            <h2 className="text-xl font-semibold text-gray-800">
+              {viewMode === 'active' ? 'Active User List' : 'Deleted User List'}
+            </h2>
             
             <div className="flex flex-wrap gap-2">
               <button
@@ -641,7 +736,6 @@ const UserPage = () => {
             </div>
           </div>
           
-          {/* Table with horizontal scroll for mobile */}
           <div className="overflow-x-auto" ref={tableRef}>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gradient-to-r from-indigo-50 to-blue-50">
@@ -689,7 +783,6 @@ const UserPage = () => {
             </table>
           </div>
           
-          {/* Pagination - always visible and responsive */}
           <div className="p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
             <div className="text-sm text-gray-600">
               Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, filteredUsers.length)} of {filteredUsers.length} users
@@ -728,46 +821,269 @@ const UserPage = () => {
         </div>
 
         {selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20">
+            <div className="bg-white rounded-lg p-6 max-w-2xl w-full shadow-xl max-h-[80vh] overflow-y-auto">
               <h2 className="text-xl font-bold text-gray-900 mb-4">User Details</h2>
-              <div className="space-y-3">
-                <p><span className="font-medium">Name:</span> {selectedUser.name || 'N/A'}</p>
-                <p><span className="font-medium">Email:</span> {selectedUser.email}</p>
-                <p><span className="font-medium">Sign-up Date:</span> {new Date(selectedUser.createdAt).toLocaleDateString()}</p>
+              
+              {/* Basic Information */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Basic Information</h3>
+                <div className="space-y-2">
+                  <p><span className="font-medium">ID:</span> {selectedUser._id || 'N/A'}</p>
+                  <p><span className="font-medium">Name:</span> {selectedUser.name || 'N/A'}</p>
+                  <p><span className="font-medium">Email:</span> {selectedUser.email}</p>
+                  <p><span className="font-medium">Sign-up Date:</span> {formatDate(selectedUser.createdAt)}</p>
+                  <p><span className="font-medium">Last Login:</span> {formatDate(selectedUser.lastLogin)}</p>
+                  <p><span className="font-medium">Last Updated:</span> {formatDate(selectedUser.lastUpdated)}</p>
+                  <p><span className="font-medium">Updated At:</span> {formatDate(selectedUser.updatedAt)}</p>
+                </div>
               </div>
-              <button 
+
+              {/* Contact Information */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Contact Information</h3>
+                <div className="space-y-2">
+                  <p><span className="font-medium">Address:</span> {selectedUser.address || 'N/A'}</p>
+                  <p><span className="font-medium">Phone:</span> {selectedUser.phone || 'N/A'}</p>
+                  <p><span className="font-medium">City:</span> {selectedUser.city || 'N/A'}</p>
+                  <p><span className="font-medium">Postal Code:</span> {selectedUser.postalCode || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Preferences */}
+              {selectedUser.preferences && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Preferences</h3>
+                  <div className="space-y-2">
+                    <p><span className="font-medium">Notifications:</span> {selectedUser.preferences.notifications ? 'Enabled' : 'Disabled'}</p>
+                    <p><span className="font-medium">Newsletter:</span> {selectedUser.preferences.newsletter ? 'Subscribed' : 'Unsubscribed'}</p>
+                    <p><span className="font-medium">Dark Mode:</span> {selectedUser.preferences.darkMode ? 'Enabled' : 'Disabled'}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Order History */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Order History</h3>
+              {userOrders && userOrders.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Order Reference</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Price</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Status</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Placed At</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {userOrders.map((order) => (
+                        <tr key={order._id}>
+                          <td className="px-4 py-2 text-sm text-gray-700">{order._id}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{order.orderReference}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            <ul className="list-disc pl-5">
+                              {order.orderItems.map((item, index) => (
+                                <li key={index}>
+                                  {item.name} (Qty: {item.quantity}, ₹{item.discountedPrice.toFixed(2)})
+                                </li>
+                              ))}
+                            </ul>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">₹{order.totalPrice.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${
+                                order.orderStatus === 'delivered'
+                                  ? 'bg-green-100 text-green-800'
+                                  : order.orderStatus === 'cancelled'
+                                  ? 'bg-red-100 text-red-800'
+                                  : order.orderStatus === 'shipped'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}
+                            >
+                              {order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${
+                                order.paymentStatus === 'completed'
+                                  ? 'bg-green-100 text-green-800'
+                                  : order.paymentStatus === 'failed'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}
+                            >
+                              {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{formatDate(order.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-700">No orders found.</p>
+              )}
+            </div>
+
+            {/* Wishlist */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Wishlist</h3>
+              {selectedUser.wishlist && selectedUser.wishlist.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product ID</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Added At</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {selectedUser.wishlist.map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.productId}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            {item.image ? (
+                              <img
+                                src={`data:image/png;base64,${item.image}`}
+                                alt={item.name}
+                                className="w-12 h-12 object-cover rounded"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = 'https://via.placeholder.com/48?text=Image+Not+Found';
+                                }}
+                              />
+                            ) : (
+                              'N/A'
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.name}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">₹{item.price.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.category}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.description}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{formatDate(item.addedAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-700">Wishlist is empty.</p>
+              )}
+            </div>
+
+            {/* Cart */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Cart</h3>
+              {cartItems && cartItems.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product ID</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">MRP</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Discounted Price</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {cartItems.map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.productId || 'N/A'}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name || 'Product'}
+                                className="w-12 h-12 object-cover rounded"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = 'https://via.placeholder.com/48?text=Image+Not+Found';
+                                }}
+                              />
+                            ) : (
+                              'N/A'
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            {item.name === 'Unknown Product' ? (
+                              <span className="text-red-500">Product Not Found</span>
+                            ) : (
+                              item.name || 'N/A'
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            {item.mrp ? `₹${item.mrp.toFixed(2)}` : 'N/A'}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            {item.discountedPrice ? `₹${item.discountedPrice.toFixed(2)}` : 'N/A'}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.category || 'N/A'}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.description || 'N/A'}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.quantity || 'N/A'}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">
+                            {item.status ? (
+                              <span
+                                className={`px-2 py-1 rounded text-xs ${
+                                  item.status === 'Available'
+                                    ? 'bg-green-100 text-green-800'
+                                    : item.status === 'Deleted'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {item.status}
+                              </span>
+                            ) : item.name === 'Unknown Product' ? (
+                              <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-800">
+                                Not Found
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
+                                Available
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-700">Cart is empty.</p>
+              )}
+            </div>
+            <div className="flex justify-end mt-4">
+              <button
                 onClick={() => setSelectedUser(null)}
-                className="mt-4 px-4 py-2 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-md hover:from-gray-500 hover:to-gray-600 transition-all shadow-sm"
+                className="px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-md hover:from-gray-600 hover:to-gray-700 transition-all shadow-sm"
               >
                 Close
               </button>
             </div>
           </div>
-        )}
-
-        <div className="fixed bottom-4 right-4 space-y-2">
-          {notifications.map(notification => (
-            <div 
-              key={notification.id}
-              className={`p-3 rounded-lg shadow-lg flex items-center ${
-                notification.type === 'error' 
-                  ? 'bg-gradient-to-r from-red-500 to-pink-600' 
-                  : 'bg-gradient-to-r from-green-500 to-emerald-600'
-              } text-white`}
-            >
-              {notification.type === 'error' ? (
-                <AlertTriangle className="mr-2 h-5 w-5" />
-              ) : (
-                <CheckCircle className="mr-2 h-5 w-5" />
-              )}
-              <p className="text-sm">{notification.message}</p>
-            </div>
-          ))}
         </div>
-      </div>
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default UserPage;

@@ -488,11 +488,11 @@ const Payment = ({
   >
     <h3 className="font-semibold text-lg mb-3">Scan to Pay</h3>
     <QRCodeCanvas
-      value={`upi://pay?pa=kknaghulpranav@oksbi&pn=Balaguruva%20Chettiar&am=${totalPrice + (deliveryMethod === "express" ? 100 : 0)}&cu=INR`}
+      value={`upi://pay?pa=muttukumarsamy@okhdfcbank&pn=Balaguruva%20Chettiar%20Sons%20Co&am=${totalPrice + (deliveryMethod === "express" ? 100 : 0)}&cu=INR`}
       size={200}
       className="mx-auto mb-4"
     />
-    <p className="text-sm text-gray-600 mb-2">UPI ID: kknaghulpranav@oksbi</p>
+    <p className="text-sm text-gray-600 mb-2">UPI ID: muttukumarsamy@okhdfcbank</p>
     <p className="text-sm text-gray-500">After payment, click below to confirm.</p>
   </motion.div>
 )}

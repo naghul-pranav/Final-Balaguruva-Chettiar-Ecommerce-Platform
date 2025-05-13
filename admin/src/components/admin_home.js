@@ -202,7 +202,7 @@ const AdminHome = () => {
     const statTrends = {
         products: { percentage: 12.5, isUp: true, data: generateSparklineData(15, 5) },
         orders: { percentage: 8.3, isUp: true, data: generateSparklineData(20, 7) },
-        messages: { percentage: -3.6, isUp: false, data: generateSparklineData(10, 4) },
+        messages: { percentage: 0, isUp: false, data: generateSparklineData(10, 4) },
         revenue: { percentage: 15.7, isUp: true, data: generateSparklineData(100, 30) },
         users: { percentage: 9.2, isUp: true, data: generateSparklineData(25, 8) }
     };
@@ -646,54 +646,6 @@ const AdminHome = () => {
                         cardClass="stat-card-info"
                         trend={statTrends.revenue}
                     />
-                </div>
-                
-                {/* Performance Highlights */}
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-md p-6 text-white mb-8">
-                    <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
-                        <div>
-                            <h3 className="font-semibold text-xl">Performance Highlights</h3>
-                            <p className="text-indigo-100 text-sm">Last 30 days compared to previous period</p>
-                        </div>
-                        <button className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded px-3 py-1 text-sm">
-                            View Report
-                        </button>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                        <div className="bg-white bg-opacity-10 p-4 rounded-lg">
-                            <div className="flex items-center mb-2">
-                                <Zap size={18} className="mr-2" />
-                                <h4 className="font-medium">Sales Growth</h4>
-                            </div>
-                            <p className="text-3xl font-bold mb-1">+24.5%</p>
-                            <div className="flex items-center text-xs">
-                                <ArrowUp size={14} className="mr-1" />
-                                <span>12.3% from last month</span>
-                            </div>
-                        </div>
-                        <div className="bg-white bg-opacity-10 p-4 rounded-lg">
-                            <div className="flex items-center mb-2">
-                                <User size={18} className="mr-2" />
-                                <h4 className="font-medium">Customer Retention</h4>
-                            </div>
-                            <p className="text-3xl font-bold mb-1">82.6%</p>
-                            <div className="flex items-center text-xs">
-                                <ArrowUp size={14} className="mr-1" />
-                                <span>3.2% from last month</span>
-                            </div>
-                        </div>
-                        <div className="bg-white bg-opacity-10 p-4 rounded-lg">
-                            <div className="flex items-center mb-2">
-                                <Star size={18} className="mr-2" />
-                                <h4 className="font-medium">Avg. Rating</h4>
-                            </div>
-                            <p className="text-3xl font-bold mb-1">4.8/5</p>
-                            <div className="flex items-center text-xs">
-                                <ArrowUp size={14} className="mr-1" />
-                                <span>0.3 from last month</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

@@ -7,11 +7,29 @@ const app = express();
 const PORT = 5000;
 const jwt = require("jsonwebtoken");
 const MONGO_URI = "mongodb+srv://balaguruva-admin:Balaguruva%401@balaguruvacluster.d48xg.mongodb.net/?retryWrites=true&w=majority&appName=BalaguruvaCluster";
+const nodemailer = require('nodemailer');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
+
+// Nodemailer configuration
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'contact.balaguruvachettiarsons@gmail.com',
+    pass: 'bwob nzqz rauc tdlh'
+  }
+});
+
+// Helper function to generate a 6-digit OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Store OTPs temporarily (in production, use Redis or a database)
+const otpStore = new Map();
 // Counter schema for auto-incrementing IDs
 const counterSchema = new mongoose.Schema({
   _id: { type: String, required: true },
@@ -32,6 +50,32 @@ const productSchema = new mongoose.Schema({
   stock: { type: Number, required: true, default: 0, min: 0 },
   createdAt: { type: Date, default: Date.now }
 });
+
+const Product = mongoose.model("Products", productSchema);
+
+// Cart schema with productId validation
+const cartSchema = new mongoose.Schema({
+  userId: { type: String, required: true, unique: true },
+  items: [{
+    productId: {
+      type: String,
+      required: true,
+      validate: {
+        validator: async function (value) {
+          // Validate that the productId exists in the Products collection
+          const product = await Product.findById(value);
+          return !!product; // Returns true if product exists, false otherwise
+        },
+        message: 'Product does not exist'
+      }
+    },
+    quantity: { type: Number, required: true, min: 1 },
+  }],
+});
+
+const Cart = mongoose.model("Cart", cartSchema);
+
+// Contact schema
 const contactSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true },
@@ -60,7 +104,6 @@ const orderSchema = new mongoose.Schema({
     quantity: { type: Number, required: true },
     image: { type: String }
   }],
-  
   shippingInfo: {
     fullName: { type: String, required: true },
     addressLine1: { type: String, required: true },
@@ -75,7 +118,7 @@ const orderSchema = new mongoose.Schema({
   paymentMethod: { 
     type: String, 
     required: true,
-    enum: ['razorpay', 'cod', 'upi'] // Add 'upi' here
+    enum: ['razorpay', 'cod', 'upi']
   },
   paymentStatus: {
     type: String,
@@ -119,8 +162,6 @@ productSchema.pre("save", async function (next) {
     next(error);
   }
 });
-
-const Product = mongoose.model("Products", productSchema);
 
 // Connect to MongoDB and update the counter to the max product id
 mongoose
@@ -178,6 +219,25 @@ const formatProduct = (product) => ({
   createdAt: product.createdAt
 });
 
+// Helper function to format user response
+const formatUser = (user) => {
+  const { password, __v, ...userData } = user.toObject(); // Exclude password and __v
+
+  // Convert MongoDB $date timestamps to ISO strings
+  return {
+    ...userData,
+    createdAt: userData.createdAt?.$date ? new Date(parseInt(userData.createdAt.$date.$numberLong)).toISOString() : userData.createdAt,
+    lastLogin: userData.lastLogin?.$date ? new Date(parseInt(userData.lastLogin.$date.$numberLong)).toISOString() : userData.lastLogin,
+    lastUpdated: userData.lastUpdated?.$date ? new Date(parseInt(userData.lastUpdated.$date.$numberLong)).toISOString() : userData.lastUpdated,
+    updatedAt: userData.updatedAt?.$date ? new Date(parseInt(userData.updatedAt.$date.$numberLong)).toISOString() : userData.updatedAt,
+    wishlist: userData.wishlist?.map(item => ({
+      ...item,
+      addedAt: item.addedAt?.$date ? new Date(parseInt(item.addedAt.$date.$numberLong)).toISOString() : item.addedAt,
+    })) || [],
+    avatar: userData.avatar ? `data:image/png;base64,${userData.avatar}` : null,
+  };
+};
+
 // GET all products
 app.get("/api/products", async (req, res) => {
   try {
@@ -188,12 +248,307 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
+// Get All Users
+app.get("/api/users", async (req, res) => {
+  try {
+    const users = await User.find();
+    res.status(200).json(users.map(formatUser));
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ error: "Failed to fetch users", details: error.message });
+  }
+});
+// Send OTP to admin email
+app.post("/api/admin/send-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate email (should match admin email)
+    if (!email || email !== "contact.balaguruvachettiarsons@gmail.com") {
+      return res.status(400).json({ success: false, message: "Invalid email address" });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    
+    // Store OTP with email (expires in 10 minutes)
+    otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000 });
+
+    // Send email with OTP
+    const mailOptions = {
+      from: 'contact.balaguruvachettiarsons@gmail.com',
+      to: email,
+      subject: 'Your Admin Login OTP - Balaguruva Chettiar',
+      text: `Your one-time password (OTP) for admin login is: ${otp}\nThis OTP is valid for 10 minutes.`
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ success: true, message: "OTP sent to your email" });
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    res.status(500).json({ success: false, message: "Failed to send OTP", details: error.message });
+  }
+});
+// Verify OTP
+app.post("/api/admin/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: "Email and OTP are required" });
+    }
+
+    const storedData = otpStore.get(email);
+    if (!storedData) {
+      return res.status(400).json({ success: false, message: "OTP not found or expired" });
+    }
+
+    if (Date.now() > storedData.expires) {
+      otpStore.delete(email);
+      return res.status(400).json({ success: false, message: "OTP has expired" });
+    }
+
+    if (storedData.otp !== otp) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    // OTP is valid, clear it from storage
+    otpStore.delete(email);
+
+    // Generate a JWT token for the admin (simulating a secure session)
+    const token = jwt.sign(
+      { email, role: "admin" },
+      "4953546c308be3088b28807c767bd35e99818434d130a588e5e6d90b6d1d326e",
+      { expiresIn: "1h" }
+    );
+
+    res.status(200).json({ success: true, message: "OTP verified", token });
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    res.status(500).json({ success: false, message: "Failed to verify OTP", details: error.message });
+  }
+});
+// Fetch cart by userId and enrich with product details
+app.get("/api/carts/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart) {
+      return res.json({ items: [] }); // Return empty cart if none exists
+    }
+
+    // Fetch product details for each item in the cart
+    const enrichedItems = await Promise.all(
+      cart.items.map(async (item) => {
+        try {
+          const product = await Product.findById(item.productId);
+          if (!product) {
+            return {
+              productId: item.productId,
+              quantity: item.quantity,
+              name: 'Unknown Product',
+              mrp: 0,
+              discountedPrice: 0,
+              image: null,
+              description: null,
+              category: null,
+              status: 'Not Found'
+            };
+          }
+          return {
+            productId: item.productId,
+            quantity: item.quantity,
+            name: product.name,
+            mrp: product.mrp,
+            discountedPrice: product.discountedPrice,
+            image: `data:image/png;base64,${product.image}`,
+            description: product.description,
+            category: product.category,
+            status: 'Available'
+          };
+        } catch (error) {
+          console.error(`Error fetching product ${item.productId}:`, error);
+          return {
+            productId: item.productId,
+            quantity: item.quantity,
+            name: 'Unknown Product',
+            mrp: 0,
+            discountedPrice: 0,
+            image: null,
+            description: null,
+            category: null,
+            status: 'Error'
+          };
+        }
+      })
+    );
+
+    res.json({ items: enrichedItems });
+  } catch (error) {
+    console.error("Error fetching cart:", error);
+    res.status(500).json({ error: "Failed to fetch cart", details: error.message });
+  }
+});
+
+// Add item to cart
+app.post("/api/carts/add", async (req, res) => {
+  try {
+    const { userId, productId, quantity } = req.body;
+
+    // Validate input
+    if (!userId || !productId || !quantity || quantity <= 0) {
+      return res.status(400).json({ 
+        error: 'Invalid input: userId, productId, and quantity are required, and quantity must be greater than 0' 
+      });
+    }
+
+    // Verify the product exists
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Find or create the cart
+    let cart = await Cart.findOne({ userId });
+    if (!cart) {
+      cart = new Cart({ userId, items: [] });
+    }
+
+    // Add or update the item in the cart
+    const itemIndex = cart.items.findIndex(item => item.productId === productId);
+    if (itemIndex > -1) {
+      cart.items[itemIndex].quantity += quantity;
+    } else {
+      cart.items.push({ productId, quantity });
+    }
+
+    await cart.save();
+    res.status(200).json({ message: 'Item added to cart', cart });
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+    res.status(500).json({ error: 'Failed to add to cart', details: error.message });
+  }
+});
+
+// Get All Deleted Users
+app.get("/api/deleted-users", async (req, res) => {
+  try {
+    const deletedUsers = await mongoose.connection
+      .collection("deletedusers")
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    // Format deleted users to exclude sensitive fields and handle dates
+    const formatDeletedUser = (user) => {
+      const { password, __v, ...userData } = user; // Exclude password and __v
+
+      // Convert MongoDB $date timestamps to ISO strings
+      return {
+        ...userData,
+        createdAt: userData.createdAt?.$date ? new Date(parseInt(userData.createdAt.$date.$numberLong)).toISOString() : userData.createdAt,
+        lastLogin: userData.lastLogin?.$date ? new Date(parseInt(userData.lastLogin.$date.$numberLong)).toISOString() : userData.lastLogin,
+        lastUpdated: userData.lastUpdated?.$date ? new Date(parseInt(userData.lastUpdated.$date.$numberLong)).toISOString() : userData.lastUpdated,
+        updatedAt: userData.updatedAt?.$date ? new Date(parseInt(userData.updatedAt.$date.$numberLong)).toISOString() : userData.updatedAt,
+        wishlist: userData.wishlist?.map(item => ({
+          ...item,
+          addedAt: item.addedAt?.$date ? new Date(parseInt(item.addedAt.$date.$numberLong)).toISOString() : item.addedAt,
+        })) || [],
+        avatar: userData.avatar ? `data:image/png;base64,${userData.avatar}` : null,
+      };
+    };
+
+    res.json({ success: true, users: deletedUsers.map(formatDeletedUser) });
+  } catch (err) {
+    console.error("Error fetching deleted users:", err);
+    res.status(500).json({ error: "Failed to fetch deleted users", details: err.message });
+  }
+});
+
+// Restore a user from deletedusers to users
+app.post("/api/users/restore/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+
+    // Find the user in the deletedusers collection
+    const deletedUser = await mongoose.connection
+      .collection("deletedusers")
+      .findOne({ _id: new mongoose.Types.ObjectId(id) });
+
+    if (!deletedUser) {
+      return res.status(404).json({ error: "Deleted user not found" });
+    }
+
+    // Remove the _id field since we're creating a new document in users
+    const { _id, ...userData } = deletedUser;
+
+    // Insert the user back into the users collection
+    const newUser = new User(userData);
+    await newUser.save();
+
+    // Delete the user from the deletedusers collection
+    await mongoose.connection.collection("deletedusers").deleteOne({ _id: new mongoose.Types.ObjectId(id) });
+
+    res.json({
+      success: true,
+      message: "User restored successfully",
+      userId: newUser._id
+    });
+  } catch (err) {
+    console.error("Restore error:", err);
+    res.status(500).json({ error: "Failed to restore user", details: err.message });
+  }
+});
+
+// Restore a product from deletedproducts to Products
+app.post("/api/products/restore/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid product ID format" });
+    }
+
+    // Find the product in the deletedproducts collection
+    const archivedProduct = await mongoose.connection
+      .collection("deletedproducts")
+      .findOne({ _id: new mongoose.Types.ObjectId(id) });
+
+    if (!archivedProduct) {
+      return res.status(404).json({ error: "Archived product not found" });
+    }
+
+    // Remove the _id field since we're creating a new document in Products
+    const { _id, ...productData } = archivedProduct;
+
+    // Insert the product back into the Products collection
+    const newProduct = new Product(productData);
+    await newProduct.save();
+
+    // Delete the product from the deletedproducts collection
+    await mongoose.connection.collection("deletedproducts").deleteOne({ _id: new mongoose.Types.ObjectId(id) });
+
+    res.json({
+      success: true,
+      message: "Product restored successfully",
+      productId: newProduct._id
+    });
+  } catch (err) {
+    console.error("Restore error:", err);
+    res.status(500).json({ error: "Failed to restore product", details: err.message });
+  }
+});
+
 // POST add a new product
 app.post("/api/products", upload.single("image"), async (req, res) => {
   try {
-    const { name, description, mrp, discount, discountedPrice, category , stock } = req.body;
+    const { name, description, mrp, discount, discountedPrice, category, stock } = req.body;
     if (!req.file) return res.status(400).json({ error: "Image is required" });
-    if (!name || !description || !mrp || !discount || !category || category=="" || !stock) {
+    if (!name || !description || !mrp || !discount || !category || category === "" || !stock) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -262,6 +617,8 @@ app.put("/api/products/:id", upload.single("image"), async (req, res) => {
     res.status(500).json({ error: "Failed to update product", details: err.message });
   }
 });
+
+// Update Order Status Endpoint for Admin (No Authentication)
 app.put("/api/orders/admin/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
@@ -292,6 +649,17 @@ app.put("/api/orders/admin/:id/status", async (req, res) => {
       });
     }
     
+    // Restock if cancelling
+    if (status === "cancelled" && order.orderStatus !== "cancelled") {
+      for (const item of order.orderItems) {
+        const product = await Product.findOne({ name: item.name }); // Match by name or adjust based on your schema
+        if (product) {
+          product.stock += item.quantity;
+          await product.save();
+        }
+      }
+    }
+    
     // Update order status
     order.orderStatus = status;
     
@@ -303,11 +671,8 @@ app.put("/api/orders/admin/:id/status", async (req, res) => {
     // If order is cancelled, update payment status appropriately
     if (status === 'cancelled') {
       if (order.paymentStatus === 'completed') {
-        // For orders where payment is already completed, we might want to mark as 'refunded'
-        // For simplicity, we're just logging this case
         console.log(`Admin cancelled order ${id} with completed payment - refund may be needed`);
       } else if (order.paymentStatus === 'pending') {
-        // For pending payments, mark as failed when order is cancelled
         order.paymentStatus = 'failed';
       }
     }
@@ -333,43 +698,7 @@ app.put("/api/orders/admin/:id/status", async (req, res) => {
     });
   }
 });
-app.put("/api/orders/admin/:id/status", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
 
-    const order = await Order.findById(id);
-    if (!order) return res.status(404).json({ error: "Order not found" });
-
-    // ✅ Restock if cancelling
-    if (status === "cancelled" && order.orderStatus !== "cancelled") {
-      for (const item of order.orderItems) {
-        const product = await Product.findById(item.product);
-        if (product) {
-          product.stock += item.quantity;
-          await product.save();
-        }
-      }
-    }
-
-    // ✅ Update status and push to status history
-    order.orderStatus = status;
-    order.statusHistory.push({
-      status,
-      timestamp: new Date()
-    });
-
-    await order.save();
-
-    res.json({ success: true, message: `Order marked as ${status}` });
-  } catch (err) {
-    console.error("Order status update error:", err);
-    res.status(500).json({ error: "Failed to update order", details: err.message });
-  }
-});
-
-
-// DELETE a product
 // DELETE a product with archival
 app.delete("/api/products/:id", async (req, res) => {
   try {
@@ -400,24 +729,56 @@ app.delete("/api/products/:id", async (req, res) => {
   }
 });
 
+// Get All Contacts
+// Get All Contacts
 app.get("/api/contacts", async (req, res) => {
   try {
-    const contacts = await Contact.find({});
+    const contacts = await Contact.find({}).sort({ createdAt: -1 }); // Sort by createdAt descending (newest first)
     res.status(200).json(contacts);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch contacts", details: error.message });
   }
 });
 
-// Get All Users
-app.get("/api/users", async (req, res) => {
+// Update Contact Status
+app.put("/api/contacts/:id", async (req, res) => {
   try {
-    const users = await User.find({}, "email name createdAt");
-    res.status(200).json(users);
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate the ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid contact ID format" });
+    }
+
+    // Validate the status
+    const validStatuses = ['pending', 'responded'];
+    if (!status || !validStatuses.includes(status.toLowerCase())) {
+      return res.status(400).json({ error: "Invalid status value. Must be 'pending' or 'responded'." });
+    }
+
+    // Find and update the contact
+    const updatedContact = await Contact.findByIdAndUpdate(
+      id,
+      { status: status.toLowerCase(), updatedAt: Date.now() },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedContact) {
+      return res.status(404).json({ error: "Contact not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Contact status updated successfully",
+      contact: updatedContact
+    });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch users", details: error.message });
+    console.error("Error updating contact status:", error);
+    res.status(500).json({ error: "Failed to update contact status", details: error.message });
   }
 });
+// JWT Authentication Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   console.log(`Auth Header for ${req.path}:`, authHeader); // Debug header
@@ -447,6 +808,7 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
+// Update Order Status (Authenticated)
 app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -507,7 +869,8 @@ app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
     });
   }
 });
-// Get All Orders (Admin)
+
+// Get All Orders (Admin - Authenticated)
 app.get("/api/orders", authenticateToken, async (req, res) => {
   try {
     const orders = await Order.find({}).sort({ createdAt: -1 });
@@ -537,9 +900,7 @@ app.get("/api/orders/admin/all", async (req, res) => {
   }
 });
 
-// Update Order Status Endpoint for Admin (No Authentication)
-
-
+// Get All Deleted Products
 app.get("/api/deleted-products", async (req, res) => {
   try {
     const archived = await mongoose.connection
@@ -547,7 +908,23 @@ app.get("/api/deleted-products", async (req, res) => {
       .find({})
       .sort({ createdAt: -1 })
       .toArray();
-    res.json({ success: true, products: archived });
+
+    // Format archived products to match the active products format
+    const formatArchivedProduct = (product) => ({
+      id: product.id,
+      _id: product._id,
+      name: product.name,
+      description: product.description,
+      mrp: product.mrp,
+      discount: product.discount,
+      discountedPrice: product.discountedPrice,
+      category: product.category,
+      image: `data:image/png;base64,${product.image}`, // Add Base64 prefix
+      stock: product.stock,
+      createdAt: product.createdAt
+    });
+
+    res.json({ success: true, products: archived.map(formatArchivedProduct) });
   } catch (err) {
     console.error("Error fetching deleted products:", err);
     res.status(500).json({ error: "Failed to fetch deleted products" });

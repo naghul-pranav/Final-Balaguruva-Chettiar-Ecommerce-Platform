@@ -349,11 +349,6 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
           
         </div>
 
-        <div className="flex items-center gap-1 mb-3 text-sm text-gray-400 italic">
-          <FaStar className="text-gray-300" />
-          <span>No ratings yet</span>
-        </div>
-
         <h2 className="text-2xl font-semibold mb-4 bg-gradient-to-r from-purple-500 to-blue-500 text-transparent bg-clip-text group-hover:scale-105 transition-transform">
           {product.name}
         </h2>

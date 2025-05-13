@@ -77,6 +77,7 @@ const Login = ({ setIsAuthenticated }) => {
         } else {
           navigate("/");
         }
+        window.location.reload();
       }
     } catch (err) {
       setError(

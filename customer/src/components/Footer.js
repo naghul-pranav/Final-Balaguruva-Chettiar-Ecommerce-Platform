@@ -52,7 +52,7 @@ const Footer = () => {
     "url": "https://tobeupdated.com",
     "contactPoint": {
       "@type": "ContactPoint",
-      "telephone": "+91 98427 85175",
+      "telephone": "+91 98427 85156",
       "email": "contact.balaguruvachettiarsons@gmail.com",
       "contactType": "customer service"
     },
@@ -122,13 +122,13 @@ const Footer = () => {
             </p>
             <div className="mt-4 space-y-2">
               <motion.a 
-                href="tel:+919842785175" 
+                href="tel:+919842785156" 
                 whileHover={{ x: 5, color: "#4fd1c5" }} 
                 className="flex items-center space-x-3 text-gray-300 hover:text-teal-400 transition-colors duration-300"
                 aria-label="Phone number"
               >
                 <FaPhone className="text-teal-400" />
-                <span>+91 98427 85175</span>
+                <span>+91 98427 85156</span>
               </motion.a>
               <motion.a 
                 href="mailto:contact.balaguruvachettiarsons@gmail.com" 
@@ -139,10 +139,15 @@ const Footer = () => {
                 <FaEnvelope className="text-teal-400" />
                 <span>contact.balaguruvachettiarsons@gmail.com</span>
               </motion.a>
-              <motion.div whileHover={{ x: 5 }} className="flex items-center space-x-3 text-gray-300">
+              <motion.a 
+                href="https://www.google.com/maps/dir//K.+Balaguruva+Chettiar+Firm,+90+Agraharam+Street,+Opposite+To+Rajan+Textiles,+Erode,+Tamil+Nadu+638001/@11.3408616,77.7247373,17z/data=!4m8!4m7!1m0!1m5!1m1!1s0x3ba96f440bae951d:0x91c04bcc1158f4c9!2m2!1d77.7296082!2d11.3408564?entry=ttu&g_ep=EgoyMDI1MDUxMS4wIKXMDSoASAFQAw%3D%3D" 
+                whileHover={{ x: 5, color: "#4fd1c5" }} 
+                className="flex items-center space-x-3 text-gray-300 hover:text-teal-400 transition-colors duration-300"
+                aria-label="Email address"
+              >
                 <FaMapMarkerAlt className="text-teal-400" />
                 <span>97, Agraharam Street, Erode</span>
-              </motion.div>
+              </motion.a>
             </div>
           </motion.div>
 

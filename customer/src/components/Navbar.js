@@ -153,6 +153,7 @@ const Navbar = memo(({ cart, theme = 'light', isAuthenticated, setIsAuthenticate
     setUserMenuOpen(false);
     setIsAuthenticated(false);
     navigate('/');
+    window.location.reload();
   };
 
   // Get user info from localStorage on component mount
