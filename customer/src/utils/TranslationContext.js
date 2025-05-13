@@ -59,6 +59,9 @@ const translations = {
       "User": "பயனர்",
     },
     footer: {
+      "Providing high-quality cookwares for all your kitchen needs": "உங்கள் சமையலறை தேவைகளுக்காக உயர்தர சமையல் பாத்திரங்களை வழங்குதல்",
+      "97, Agraharam Street, Erode": "97, அக்ரஹாரம் தெரு, ஈரோடு",
+      "© 2025 Balaguruva Chettiar. All rights reserved. Made with ♥ for quality products.": "© 2025 பாலகுருவா செட்டியார். அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை. தரமான தயாரிப்புகளுக்காக ♥ உடன் உருவாக்கப்பட்டது.",
       "Providing high-quality yarns for all your textile needs since 2020": "2020 முதல் உங்கள் ஜவுளித் தேவைகளுக்கான உயர்தர நூல்களை வழங்குகிறோம்",
       "Quick Links": "விரைவு இணைப்புகள்",
       "Connect With Us": "எங்களுடன் இணைக",
