@@ -310,24 +310,7 @@ app.get("/api/test-db", async (req, res) => {
 });
 
 // Get All Contacts
-app.get("/api/contacts", async (req, res) => {
-  try {
-    const contacts = await Contact.find({});
-    res.status(200).json(contacts);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch contacts", details: error.message });
-  }
-});
 
-// Get All Users
-app.get("/api/users", async (req, res) => {
-  try {
-    const users = await User.find({}, "email name createdAt");
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch users", details: error.message });
-  }
-});
 
 // Get User Profile
 app.get("/api/user/profile", authenticateToken, async (req, res) => {
@@ -731,109 +714,6 @@ app.get("/api/my-orders", authenticateToken, async (req, res) => {
       success: false,
       message: "Failed to fetch orders. Please try again later.",
       error: error.message
-    });
-  }
-});
-
-// Get All Orders (Admin)
-app.get("/api/orders", authenticateToken, async (req, res) => {
-  try {
-    const orders = await Order.find({}).sort({ createdAt: -1 });
-    res.status(200).json(orders);
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-    res.status(500).json({ message: "Failed to fetch orders. Please try again later." });
-  }
-});
-
-// Get All Orders (Admin - No Authentication)
-app.get("/api/orders/admin/all", async (req, res) => {
-  try {
-    const orders = await Order.find({}).sort({ createdAt: -1 });
-    res.status(200).json({
-      success: true,
-      count: orders.length,
-      orders
-    });
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-    res.status(500).json({ 
-      success: false,
-      message: "Failed to fetch orders. Please try again later.",
-      error: error.message
-    });
-  }
-});
-
-// Update Order Status Endpoint for Admin (No Authentication)
-app.put("/api/orders/admin/:id/status", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-    
-    if (!status) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Status is required" 
-      });
-    }
-    
-    // Validate status value
-    const validStatuses = ['processing', 'shipped', 'delivered', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid status value" 
-      });
-    }
-    
-    // Find the order
-    const order = await Order.findById(id);
-    if (!order) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Order not found" 
-      });
-    }
-    
-    // Update order status
-    order.orderStatus = status;
-    
-    // Set payment status to completed if order is delivered and payment was pending
-    if (status === 'delivered' && order.paymentMethod === 'cod' && order.paymentStatus === 'pending') {
-      order.paymentStatus = 'completed';
-    }
-    
-    // If order is cancelled, update payment status appropriately
-    if (status === 'cancelled') {
-      if (order.paymentStatus === 'completed') {
-        // For orders where payment is already completed, we might want to mark as 'refunded'
-        // For simplicity, we're just logging this case
-        console.log(`Admin cancelled order ${id} with completed payment - refund may be needed`);
-      } else if (order.paymentStatus === 'pending') {
-        // For pending payments, mark as failed when order is cancelled
-        order.paymentStatus = 'failed';
-      }
-    }
-    
-    await order.save();
-    
-    res.json({
-      success: true,
-      message: `Order status updated to ${status}`,
-      order: {
-        _id: order._id,
-        orderStatus: order.orderStatus,
-        paymentStatus: order.paymentStatus,
-        updatedAt: order.updatedAt
-      }
-    });
-  } catch (error) {
-    console.error("Error updating order status (admin):", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to update order status", 
-      error: error.message 
     });
   }
 });
