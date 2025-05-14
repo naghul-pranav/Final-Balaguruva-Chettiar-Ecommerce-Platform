@@ -51,67 +51,72 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
   const currentStepIndex = steps.indexOf(step);
 
   const updateQuantity = async (productId, newQuantity) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Please log in to update cart");
-        return;
-      }
-
-      const cartItem = cart.find((item) => String(item.productId) === String(productId));
-      if (!cartItem) {
-        setError("Item not found in cart");
-        console.error("Item not found in cart for productId:", productId);
-        return;
-      }
-
-      const product = allProducts.find(
-        (p) => String(p._id) === String(productId) || String(p.id) === String(productId)
-      );
-      if (!product) {
-        setError("Product not found");
-        console.error(
-          "Product not found for productId:",
-          productId,
-          "allProducts IDs:",
-          allProducts.map((p) => ({ id: p.id, _id: p._id }))
-        );
-        return;
-      }
-      if (newQuantity > product.stock) {
-        setError(`Only ${product.stock} units available`);
-        return;
-      }
-
-      console.log("Updating quantity for productId:", productId, "to:", newQuantity);
-      const response = await axios.post(
-        "https://final-balaguruva-chettiar-ecommerce.onrender.com/api/cart/update",
-        {
-          userId: user.email,
-          productId,
-          quantity: Math.max(1, newQuantity),
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      setCart((prevCart) =>
-        prevCart.map((item) =>
-          String(item.productId) === String(productId)
-            ? { ...item, quantity: Math.max(1, newQuantity) }
-            : item
-        )
-      );
-
-      setError("");
-      console.log(`Updated quantity for product ${productId} to ${newQuantity}`);
-    } catch (err) {
-      const errorMessage = err.response?.data?.message || "Failed to update quantity";
-      setError(errorMessage);
-      console.error("Failed to update quantity:", err.response?.data || err);
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Please log in to update cart");
+      return;
     }
-  };
+
+    const cartItem = cart.find((item) => String(item.productId) === String(productId));
+    if (!cartItem) {
+      setError("Item not found in cart");
+      console.error("Item not found in cart for productId:", productId);
+      return;
+    }
+
+    const product = allProducts.find(
+      (p) => String(p.id) === String(productId)
+    );
+    if (!product) {
+      setError("Product not found");
+      console.error(
+        "Product not found for productId:",
+        productId,
+        "allProducts IDs:",
+        allProducts.map((p) => ({ id: p.id }))
+      );
+      return;
+    }
+    if (newQuantity > product.stock) {
+      setError(`Only ${product.stock} units available`);
+      return;
+    }
+
+    if (newQuantity < 1) {
+      setError("Quantity must be at least 1");
+      return;
+    }
+
+    console.log("Updating quantity for productId:", productId, "to:", newQuantity);
+    const response = await axios.post(
+      "https://final-balaguruva-chettiar-ecommerce.onrender.com/api/cart/update",
+      {
+        userId: user.email,
+        productId,
+        quantity: newQuantity,
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        String(item.productId) === String(productId)
+          ? { ...item, quantity: newQuantity }
+          : item
+      )
+    );
+
+    setError("");
+    console.log(`Updated quantity for product ${productId} to ${newQuantity}`);
+  } catch (err) {
+    const errorMessage = err.response?.data?.message || "Failed to update quantity";
+    setError(errorMessage);
+    console.error("Failed to update quantity:", err.response?.data || err);
+  }
+};
 
   const handleBackClick = () => {
     const previousStepIndex = Math.max(currentStepIndex - 1, 0);
@@ -151,67 +156,67 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
   }, []);
 
   useEffect(() => {
-    const fetchCartAndProducts = async () => {
-      const user = JSON.parse(localStorage.getItem("user"));
-      if (!user?.email) {
-        console.log("No user email found, skipping cart fetch");
-        setCart([]);
-        return;
-      }
-      try {
-        const token = localStorage.getItem("token");
-        const cartRes = await axios.get(`https://final-balaguruva-chettiar-ecommerce.onrender.com/api/cart/${user.email}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const cartData = cartRes.data;
-        console.log("🛒 Cart from backend:", cartData);
+  const fetchCartAndProducts = async () => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user?.email) {
+      console.log("No user email found, skipping cart fetch");
+      setCart([]);
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const cartRes = await axios.get(`https://final-balaguruva-chettiar-ecommerce.onrender.com/api/cart/${user.email}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const cartData = cartRes.data;
+      console.log("🛒 Cart from backend:", cartData);
 
-        const productsRes = await axios.get("https://final-balaguruva-chettiar-ecommerce.onrender.com/api/products");
-        const products = productsRes.data;
-        setAllProducts(products);
-        console.log("📦 All products:", products);
+      const productsRes = await axios.get("https://final-balaguruva-chettiar-ecommerce.onrender.com/api/products");
+      const products = productsRes.data;
+      setAllProducts(products);
+      console.log("📦 All products:", products);
 
-        const enrichedCart = (cartData.items || [])
-          .map((item) => {
-            const product = products.find(
-              (p) => String(p._id) === String(item.productId) || String(p.id) === String(item.productId)
-            );
-            if (!product) {
-              console.warn("❌ Product not found for productId:", item.productId);
-              return null;
-            }
+      const enrichedCart = (cartData.items || [])
+        .map((item) => {
+          const product = products.find(
+            (p) => String(p.id) === String(item.productId) // Ensure string comparison
+          );
+          if (!product) {
+            console.warn("❌ Product not found for productId:", item.productId);
+            return null;
+          }
 
-            return {
-              productId: item.productId,
-              name: product.name,
-              image: item.image || product.image || "",
-              mrp: product.mrp,
-              discountedPrice: product.discountedPrice,
-              quantity: item.quantity,
-            };
-          })
-          .filter((item) => item !== null);
+          return {
+            productId: item.productId,
+            name: product.name,
+            image: item.image || product.image || "", // Use cart image if available
+            mrp: product.mrp,
+            discountedPrice: product.discountedPrice,
+            quantity: item.quantity,
+          };
+        })
+        .filter((item) => item !== null);
 
-        setCart(enrichedCart);
-        console.log("✅ Processed cart:", enrichedCart);
-        setError("");
-      } catch (err) {
-        const errorMessage =
-          err.response?.data?.message || err.message || "Failed to load cart or products";
-        console.error("❌ Error loading cart/products:", {
-          message: errorMessage,
-          status: err.response?.status,
-          data: err.response?.data,
-          request: err.request?.responseURL,
-          stack: err.stack,
-        });
-        setError(errorMessage);
-        setCart([]);
-      }
-    };
+      setCart(enrichedCart);
+      console.log("✅ Processed cart:", enrichedCart);
+      setError("");
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message || err.message || "Failed to load cart or products";
+      console.error("❌ Error loading cart/products:", {
+        message: errorMessage,
+        status: err.response?.status,
+        data: err.response?.data,
+        request: err.request?.responseURL,
+        stack: err.stack,
+      });
+      setError(errorMessage);
+      setCart([]);
+    }
+  };
 
-    fetchCartAndProducts();
-  }, []);
+  fetchCartAndProducts();
+}, []);
 
   useEffect(() => {
     const syncCart = async () => {
@@ -474,128 +479,129 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
   }
 
   const renderCartItems = () => (
-    <div className={`${isMobile ? "overflow-x-auto" : ""}`}>
-      {error && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mb-4 p-3 bg-red-100 text-red-700 rounded"
-        >
-          {error}
-        </motion.div>
-      )}
-      <table className="w-full min-w-[768px]">
-        <thead>
-          <tr className="border-b">
-            <th className="text-left py-2">Product</th>
-            <th className="text-left py-2">Price</th>
-            <th className="text-left py-2">Tax</th>
-            <th className="text-left py-2">Quantity</th>
-            <th className="text-left py-2">Total</th>
-            <th className="text-left py-2">Remove</th>
-          </tr>
-        </thead>
-        <tbody>
-          <AnimatePresence>
-            {cart.map((item, index) => {
-              const product = allProducts.find((p) => String(p.id) === String(item.productId));
-              const maxQuantity = product?.stock || Infinity;
-              return (
-                <motion.tr
-                  key={item.productId}
-                  layout
-                  variants={cartItemVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  whileHover="hover"
-                  className="border-b"
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <td className="py-4 flex items-center space-x-4">
-                    <motion.div whileHover={{ scale: 1.1, rotate: 5 }} className="overflow-hidden rounded-lg">
-                      <img
-                        src={
-                          item.image && typeof item.image === "string" && item.image.length > 0
-                            ? item.image.startsWith("data:image")
-                              ? item.image
-                              : `data:image/jpeg;base64,${item.image}`
-                            : "/placeholder.svg"
-                        }
-                        alt={item.name || "Product"}
-                        className="w-20 h-20 object-cover"
-                        onError={(e) =>
-                          console.error("Image failed to load for productId:", item.productId, "Src:", e.target.src)
-                        }
-                      />
-                    </motion.div>
-                    <span className="text-xl font-semibold">{item.name}</span>
-                  </td>
-                  <td className="py-4">
-                    <span className="line-through text-sm text-gray-500 mr-1">
-                      ₹{item.mrp ? item.mrp.toFixed(2) : "0.00"}
-                    </span>
-                    <span className="text-green-600 font-semibold">
-                      ₹{item.discountedPrice ? item.discountedPrice.toFixed(2) : "0.00"}
-                    </span>
-                  </td>
-                  <td className="py-4">₹0.00</td>
-                  <td className="py-4">
-                    <div className="flex items-center space-x-2">
-                      <motion.button
-                        variants={quantityButtonVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                        onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                        className="bg-gray-200 p-2 rounded-full transition-colors duration-200"
-                        disabled={item.quantity <= 1}
-                      >
-                        <FaMinus />
-                      </motion.button>
-                      <motion.span
-                        key={item.quantity}
-                        initial={{ scale: 1.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="text-xl font-semibold w-8 text-center"
-                      >
-                        {item.quantity}
-                      </motion.span>
-                      <motion.button
-                        variants={quantityButtonVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                        className="bg-gray-200 p-2 rounded-full transition-colors duration-200"
-                        disabled={item.quantity >= maxQuantity}
-                      >
-                        <FaPlus />
-                      </motion.button>
-                    </div>
-                    {product && (
-                      <p className="text-sm text-gray-500 mt-1">Available: {product.stock}</p>
-                    )}
-                  </td>
-                  <td className="py-4 font-semibold">
-                    ₹{item.discountedPrice && item.quantity ? (item.discountedPrice * item.quantity).toFixed(2) : "0.00"}
-                  </td>
-                  <td className="py-4">
+  <div className={`${isMobile ? "overflow-x-auto" : ""}`}>
+    {error && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="mb-4 p-3 bg-red-100 text-red-700 rounded"
+      >
+        {error}
+      </motion.div>
+    )}
+    <table className="w-full min-w-[768px]">
+      <thead>
+        <tr className="border-b">
+          <th className="text-left py-2">Product</th>
+          <th className="text-left py-2">Price</th>
+          <th className="text-left py-2">Tax</th>
+          <th className="text-left py-2">Quantity</th>
+          <th className="text-left py-2">Total</th>
+          <th className="text-left py-2">Remove</th>
+        </tr>
+      </thead>
+      <tbody>
+        <AnimatePresence>
+          {cart.map((item, index) => {
+            const product = allProducts.find((p) => String(p.id) === String(item.productId));
+            const maxQuantity = product?.stock || Infinity;
+            return (
+              <motion.tr
+                key={item.productId}
+                layout
+                variants={cartItemVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                whileHover="hover"
+                className="border-b"
+                transition={{ delay: index * 0.05 }}
+              >
+                <td className="py-4 flex items-center space-x-4">
+                  <motion.div whileHover={{ scale: 1.1, rotate: 5 }} className="overflow-hidden rounded-lg">
+                    <img
+                      src={
+                        item.image && typeof item.image === "string" && item.image.length > 0
+                          ? item.image.startsWith("data:image")
+                            ? item.image
+                            : `data:image/jpeg;base64,${item.image}`
+                          : "/placeholder.svg" // Fallback image
+                      }
+                      alt={item.name || "Product"}
+                      className="w-20 h-20 object-cover"
+                      onError={(e) => {
+                        e.target.src = "/placeholder.svg"; // Fallback on error
+                        console.error("Image failed to load for productId:", item.productId, "Src:", item.image);
+                      }}
+                    />
+                  </motion.div>
+                  <span className="text-xl font-semibold">{item.name}</span>
+                </td>
+                <td className="py-4">
+                  <span className="line-through text-sm text-gray-500 mr-1">
+                    ₹{item.mrp ? item.mrp.toFixed(2) : "0.00"}
+                  </span>
+                  <span className="text-green-600 font-semibold">
+                    ₹{item.discountedPrice ? item.discountedPrice.toFixed(2) : "0.00"}
+                  </span>
+                </td>
+                <td className="py-4">₹0.00</td>
+                <td className="py-4">
+                  <div className="flex items-center space-x-2">
                     <motion.button
-                      whileHover={{ scale: 1.2, color: "#ef4444" }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => handleRemoveFromCart(item.productId)}
-                      className="text-red-500 hover:text-red-600 transition-colors duration-200"
+                      variants={quantityButtonVariants}
+                      whileHover="hover"
+                      whileTap="tap"
+                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                      className="bg-gray-200 p-2 rounded-full transition-colors duration-200"
+                      disabled={item.quantity <= 1}
                     >
-                      <FaTrash />
+                      <FaMinus />
                     </motion.button>
-                  </td>
-                </motion.tr>
-              );
-            })}
-          </AnimatePresence>
-        </tbody>
-      </table>
-    </div>
-  );
+                    <motion.span
+                      key={item.quantity}
+                      initial={{ scale: 1.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="text-xl font-semibold w-8 text-center"
+                    >
+                      {item.quantity}
+                    </motion.span>
+                    <motion.button
+                      variants={quantityButtonVariants}
+                      whileHover="hover"
+                      whileTap="tap"
+                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                      className="bg-gray-200 p-2 rounded-full transition-colors duration-200"
+                      disabled={item.quantity >= maxQuantity}
+                    >
+                      <FaPlus />
+                    </motion.button>
+                  </div>
+                  {product && (
+                    <p className="text-sm text-gray-500 mt-1">Available: {product.stock}</p>
+                  )}
+                </td>
+                <td className="py-4 font-semibold">
+                  ₹{item.discountedPrice && item.quantity ? (item.discountedPrice * item.quantity).toFixed(2) : "0.00"}
+                </td>
+                <td className="py-4">
+                  <motion.button
+                    whileHover={{ scale: 1.2, color: "#ef4444" }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => handleRemoveFromCart(item.productId)}
+                    className="text-red-500 hover:text-red-600 transition-colors duration-200"
+                  >
+                    <FaTrash />
+                  </motion.button>
+                </td>
+              </motion.tr>
+            );
+          })}
+        </AnimatePresence>
+      </tbody>
+    </table>
+  </div>
+);
 
   const renderShippingForm = () => (
     <motion.div
@@ -912,52 +918,53 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
         throw new Error("Cart is empty or invalid. Cannot generate invoice.");
       }
 
-      // Validate cart items
-      cart.forEach((item, index) => {
-        if (!item.name || typeof item.quantity !== "number" || typeof item.discountedPrice !== "number") {
+      // Validate cart items and ensure all required fields are present
+      const validatedCart = cart.map((item, index) => {
+        if (!item.productId || !item.name || typeof item.quantity !== "number" || typeof item.discountedPrice !== "number") {
           throw new Error(`Invalid cart item at index ${index}: ${JSON.stringify(item)}`);
         }
+        return {
+          productId: item.productId,
+          name: item.name,
+          quantity: item.quantity,
+          discountedPrice: item.discountedPrice,
+        };
       });
 
-      // Gradient background simulation (blue-50 to indigo-50)
       const pageWidth = doc.internal.pageSize.width;
       const pageHeight = doc.internal.pageSize.height;
       for (let i = 0; i <= 40; i++) {
-        const r = 219 + (224 - 219) * (i / 40); // blue-50 to indigo-50
+        const r = 219 + (224 - 219) * (i / 40);
         const g = 234 + (231 - 234) * (i / 40);
         const b = 254 + (255 - 254) * (i / 40);
         doc.setFillColor(r, g, b);
         doc.rect(0, i, pageWidth, 1, "F");
       }
 
-      // Header: Balaguruva Chettiar
       doc.setFont("helvetica", "bold");
       doc.setFontSize(22);
-      doc.setTextColor("#3b82f6"); // Tailwind blue-600
+      doc.setTextColor("#3b82f6");
       doc.text("Balaguruva Chettiar Son's Co", pageWidth / 2, 15, { align: "center" });
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      doc.setTextColor("#6b7280"); // Tailwind gray-500
+      doc.setTextColor("#6b7280");
       doc.text("97, Agraharam Street, Erode, Tamil Nadu, India - 638001", pageWidth / 2, 23, { align: "center" });
       doc.text("Phone: +91 9842785156 | Email: contact.balaguruvachettiarsons@gmail.com", pageWidth / 2, 28, { align: "center" });
 
-      // Invoice Title
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
-      doc.setTextColor("#3b82f6"); // Tailwind blue-600
+      doc.setTextColor("#3b82f6");
       doc.text("INVOICE", pageWidth / 2, 45, { align: "center" });
 
-      // Invoice Details (Date, Invoice #, Payment Method)
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      doc.setTextColor("#6b7280"); // Tailwind gray-500
+      doc.setTextColor("#6b7280");
       const today = new Date().toLocaleDateString();
       doc.text(`Date: ${today}`, 20, 55);
       doc.text(`Invoice #: ${savedOrder ? savedOrder.orderReference : orderReference}`, 20, 60);
       doc.text(`Payment Method: ${getPaymentMethodDisplay(paymentMethod).name || "N/A"}`, 20, 65);
 
-      // Bill To (Shipping Info)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.text("Bill To:", 140, 55);
@@ -968,37 +975,34 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
       doc.text(`${shippingInfo.city || "N/A"}, ${shippingInfo.postalCode || "N/A"}`, 140, 70);
       doc.text(`Email: ${shippingInfo.email || user?.email || "N/A"}`, 140, 75);
 
-      // Separator Line
-      doc.setDrawColor("#e5e7eb"); // Tailwind gray-200
+      doc.setDrawColor("#e5e7eb");
       doc.setLineWidth(0.5);
       doc.line(20, 80, 190, 80);
 
-      // Order Details Section Title
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
-      doc.setTextColor("#3b82f6"); // Tailwind blue-500
+      doc.setTextColor("#3b82f6");
       doc.text("Order Details", 20, 90);
 
-      // Items Section (Styled like a card)
-      const itemsHeight = 10 + cart.length * 10;
-      doc.setFillColor("#ffffff"); // Tailwind white
-      doc.setDrawColor("#e5e7eb"); // Tailwind gray-200
+      const itemsHeight = 10 + validatedCart.length * 10;
+      doc.setFillColor("#ffffff");
+      doc.setDrawColor("#e5e7eb");
       doc.roundedRect(20, 95, 170, itemsHeight, 3, 3, "FD");
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      doc.setTextColor("#6b7280"); // Tailwind gray-500
+      doc.setTextColor("#6b7280");
       doc.text("Items", 25, 102);
 
       doc.autoTable({
         startY: 105,
         head: [["", "Item", "Qty", "Price", "Total"]],
-        body: cart.map((item) => [
+        body: validatedCart.map((item) => [
           "",
           item.name || "N/A",
           (item.quantity || 0).toString(),
-          `INR ${(item.discountedPrice || 0).toFixed(2)}`, // Use "INR " instead of ₹
-          `INR ${((item.discountedPrice || 0) * (item.quantity || 0)).toFixed(2)}`, // Use "INR " instead of ₹
+          `INR ${(item.discountedPrice || 0).toFixed(2)}`,
+          `INR ${((item.discountedPrice || 0) * (item.quantity || 0)).toFixed(2)}`,
         ]),
         theme: "plain",
         headStyles: {
@@ -1009,15 +1013,15 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
         },
         bodyStyles: {
           fillColor: "#ffffff",
-          textColor: "#374151", // Tailwind gray-800
+          textColor: "#374151",
           fontSize: 10,
         },
         columnStyles: {
           0: { cellWidth: 5 },
-          1: { cellWidth: 75 }, // Slightly reduce to give more space to price columns
+          1: { cellWidth: 75 },
           2: { cellWidth: 20, halign: "center" },
-          3: { cellWidth: 35, halign: "right" }, // Increase width for better alignment
-          4: { cellWidth: 35, halign: "right" }, // Increase width for better alignment
+          3: { cellWidth: 35, halign: "right" },
+          4: { cellWidth: 35, halign: "right" },
         },
         styles: {
           font: "helvetica",
@@ -1036,11 +1040,9 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
 
       let currentY = (doc.lastAutoTable.finalY || 105 + itemsHeight) + 10;
 
-      // Shipping Address and Delivery Method (Side by Side)
       const cardWidth = 80;
       const cardHeight = 40;
 
-      // Shipping Address Card
       doc.setFillColor("#ffffff");
       doc.setDrawColor("#e5e7eb");
       doc.roundedRect(20, currentY, cardWidth, cardHeight, 3, 3, "FD");
@@ -1058,7 +1060,6 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
       doc.text(`${shippingInfo.city || "N/A"}, ${shippingInfo.postalCode || "N/A"}`, 25, currentY + 24);
       doc.text(`${user?.email || shippingInfo.email || "N/A"}`, 25, currentY + 29);
 
-      // Delivery Method Card
       doc.setFillColor("#ffffff");
       doc.setDrawColor("#e5e7eb");
       doc.roundedRect(110, currentY, cardWidth, cardHeight, 3, 3, "FD");
@@ -1084,7 +1085,6 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
 
       currentY += cardHeight + 10;
 
-      // Payment Summary Card
       doc.setFillColor("#ffffff");
       doc.setDrawColor("#e5e7eb");
       doc.roundedRect(20, currentY, 170, 50, 3, 3, "FD");
@@ -1102,7 +1102,7 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
       doc.text(`INR ${(totalPrice || 0).toFixed(2)}`, 185, currentY + 14, { align: "right" });
 
       doc.text("Delivery", 25, currentY + 19);
-      doc.setTextColor(deliveryMethod === "standard" ? "#16a34a" : "#374151"); // Tailwind green-600 or gray-800
+      doc.setTextColor(deliveryMethod === "standard" ? "#16a34a" : "#374151");
       doc.text(deliveryMethod === "express" ? "INR 100.00" : "Free", 185, currentY + 19, { align: "right" });
 
       doc.setTextColor("#374151");
@@ -1127,7 +1127,6 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
 
       currentY += 60;
 
-      // Footer
       doc.setFont("helvetica", "italic");
       doc.setFontSize(10);
       doc.setTextColor("#6b7280");
@@ -1136,7 +1135,6 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
       });
       doc.text("We appreciate your business.", pageWidth / 2, pageHeight - 25, { align: "center" });
 
-      // Save the PDF
       doc.save(`Invoice_${savedOrder ? savedOrder.orderReference : orderReference}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);

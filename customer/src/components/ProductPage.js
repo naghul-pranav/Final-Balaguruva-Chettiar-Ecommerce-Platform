@@ -65,22 +65,22 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
   };
 
   // Check for pending cart product after authentication
-  useEffect(() => {
-    if (isAuthenticated) {
-      const pendingProduct = localStorage.getItem('pendingCartProduct');
-      if (pendingProduct) {
-        try {
-          const product = JSON.parse(pendingProduct);
-          setSelectedProduct(product);
-          setShowModal(true);
-          // Clear the pending product
-          localStorage.removeItem('pendingCartProduct');
-        } catch (err) {
-          console.error('Error parsing pending cart product:', err);
-        }
+useEffect(() => {
+  if (isAuthenticated) {
+    const pendingProduct = localStorage.getItem('pendingCartProduct');
+    if (pendingProduct) {
+      try {
+        const product = JSON.parse(pendingProduct);
+        setSelectedProduct(product);
+        setShowModal(true);
+        localStorage.removeItem('pendingCartProduct');
+      } catch (err) {
+        console.error('Error parsing pending cart product:', err);
+        localStorage.removeItem('pendingCartProduct'); // Clear invalid data
       }
     }
-  }, [isAuthenticated]);
+  }
+}, [isAuthenticated]);
 
   const confirmAddToCart = async () => {
   if (quantity > 0 && selectedProduct) {
@@ -92,7 +92,6 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
         return;
       }
 
-      // Validate productId
       const productId = selectedProduct.id;
       if (!productId || !/^[0-9a-fA-F]{24}$/.test(productId)) {
         setCartError("Invalid product ID");
@@ -100,19 +99,17 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
         return;
       }
 
-      // Local stock check
       if (quantity > selectedProduct.stock) {
         setCartError(`Only ${selectedProduct.stock} units available`);
         return;
       }
 
-      // Log payload for debugging
       const payload = {
         userId: user.email,
         product: {
           productId,
           name: selectedProduct.name,
-          image: selectedProduct.image,
+          image: selectedProduct.image || "", // Ensure image is always included
           mrp: selectedProduct.mrp,
           discountedPrice: selectedProduct.discountedPrice,
           quantity,
@@ -120,7 +117,6 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
       };
       console.log("Sending to /api/cart/add:", payload);
 
-      // Send to backend
       const response = await axios.post(
         "https://final-balaguruva-chettiar-ecommerce.onrender.com/api/cart/add",
         payload,
@@ -134,8 +130,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
       setQuantity(1);
       setCartError("");
     } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || "Failed to add to cart";
+      const errorMessage = error.response?.data?.message || "Failed to add to cart";
       setCartError(errorMessage);
       console.error("Failed to sync cart to backend:", error);
     }
@@ -195,54 +190,51 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
   };
 
   const toggleWishlist = async (e, product) => {
-    e.stopPropagation();
+  e.stopPropagation();
+  
+  if (!isAuthenticated) {
+    navigate('/login');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error("Authentication token not found");
+
+    const productId = product.id;
     
-    if (!isAuthenticated) {
-      // Redirect to login if not authenticated
-      navigate('/login');
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error("Authentication token not found");
-
-      const productId = product.id;
+    if (wishlistItems.has(productId)) {
+      await axios.delete(`https://final-balaguruva-chettiar-ecommerce.onrender.com/api/user/wishlist/${productId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
-      if (wishlistItems.has(productId)) {
-        // Remove from wishlist
-        await axios.delete(`https://final-balaguruva-chettiar-ecommerce.onrender.com/api/user/wishlist/${productId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        setWishlistItems(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(productId);
-          return newSet;
-        });
-      } else {
-        // Add to wishlist
-        await axios.post("https://final-balaguruva-chettiar-ecommerce.onrender.com/api/user/wishlist", {
-          productId,
-          name: product.name,
-          price: product.discountedPrice, // 👈 Fix: include this field
-          image: product.image,
-          description: product.description,
-          category: product.category
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });        
-        
-        setWishlistItems(prev => {
-          const newSet = new Set(prev);
-          newSet.add(productId);
-          return newSet;
-        });
-      }
-    } catch (error) {
-      console.error("Error updating wishlist:", error);
+      setWishlistItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(productId);
+        return newSet;
+      });
+    } else {
+      await axios.post("https://final-balaguruva-chettiar-ecommerce.onrender.com/api/user/wishlist", {
+        productId,
+        name: product.name,
+        price: product.discountedPrice,
+        image: product.image || "", // Ensure image is included
+        description: product.description,
+        category: product.category
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });        
+      
+      setWishlistItems(prev => {
+        const newSet = new Set(prev);
+        newSet.add(productId);
+        return newSet;
+      });
     }
-  };
+  } catch (error) {
+    console.error("Error updating wishlist:", error);
+  }
+};
 
   useEffect(() => {
     if (isAuthenticated) {

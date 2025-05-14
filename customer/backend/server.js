@@ -15,9 +15,10 @@ const Cart = require('./models/Cart');
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://your-production-frontend-domain.com'], // Replace with your actual production frontend domain
+  origin: ['http://localhost:3000', 'https://final-balaguruva-chettiar-ecommerce.onrender.com'], // Update with your actual production domain
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
 }));
 
 // MongoDB Connection
@@ -52,14 +53,13 @@ const userSchema = new mongoose.Schema({
     productId: { type: String, required: true },
     name: { type: String, required: true },
     price: { type: Number, required: true },
-    image: { type: String },
+    image: { type: String, required: true }, // Make image required
     description: { type: String },
     category: { type: String },
     addedAt: { type: Date, default: Date.now }
   }],
   lastUpdated: { type: Date }
 });
-
 
 // Contact Schema
 const contactSchema = new mongoose.Schema({
@@ -79,18 +79,18 @@ const orderSchema = new mongoose.Schema({
   user: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User',
-    required: false // Allow guest checkout
+    required: false
   },
   userEmail: { type: String, required: true },
   userName: { type: String, required: false, default: "Guest User" },
   orderItems: [{
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true }, // Add productId
     name: { type: String, required: true },
     mrp: { type: Number, required: true },
     discountedPrice: { type: Number, required: true },
     quantity: { type: Number, required: true },
     image: { type: String }
   }],
-  
   shippingInfo: {
     fullName: { type: String, required: true },
     addressLine1: { type: String, required: true },
@@ -105,7 +105,7 @@ const orderSchema = new mongoose.Schema({
   paymentMethod: { 
     type: String, 
     required: true,
-    enum: ['razorpay', 'cod', 'upi'] // Add 'upi' here
+    enum: ['razorpay', 'cod', 'upi']
   },
   paymentStatus: {
     type: String,
@@ -152,11 +152,11 @@ const cartSchema = new mongoose.Schema({
   items: [
     {
       productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
-      name: String,
-      image: String,
-      mrp: Number,
-      discountedPrice: Number,
-      quantity: Number,
+      name: { type: String, required: true },
+      image: { type: String, required: true }, // Make image required
+      mrp: { type: Number, required: true },
+      discountedPrice: { type: Number, required: true },
+      quantity: { type: Number, required: true },
     },
   ],
 });
@@ -495,7 +495,6 @@ app.post("/api/orders", async (req, res) => {
       notes,
     } = req.body;
 
-    // Validate required fields
     if (!userEmail || !orderItems || !shippingInfo || !deliveryMethod || !paymentMethod || !subtotal || !totalPrice) {
       return res.status(400).json({
         success: false,
@@ -504,10 +503,18 @@ app.post("/api/orders", async (req, res) => {
       });
     }
 
-    // Start MongoDB transaction
+    // Validate orderItems for productId
+    for (const item of orderItems) {
+      if (!item.productId || !mongoose.Types.ObjectId.isValid(item.productId)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid or missing productId in order item: ${item.name}`,
+        });
+      }
+    }
+
     const session = await mongoose.startSession();
     await session.withTransaction(async () => {
-      // Validate stock for each item
       for (const item of orderItems) {
         const product = await Product.findById(item.productId).session(session);
         if (!product) {
@@ -518,10 +525,8 @@ app.post("/api/orders", async (req, res) => {
         }
       }
 
-      // Generate a unique order reference if not provided
       const finalOrderReference = orderReference || `ORD-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
-      // Check if userId is valid or find user by email
       let validatedUserId = null;
       let userFound = false;
 
@@ -541,18 +546,17 @@ app.post("/api/orders", async (req, res) => {
         }
       }
 
-      // Create new order
       const newOrder = new Order({
         user: validatedUserId,
         userEmail,
         userName: userName || (validatedUserId ? "Registered User" : "Guest User"),
         orderItems: orderItems.map((item) => ({
+          productId: new mongoose.Types.ObjectId(item.productId), // Ensure ObjectId
           name: item.name,
           mrp: item.mrp || item.price,
           discountedPrice: item.discountedPrice || item.price,
           quantity: item.quantity,
           image: item.image || "",
-          productId: item.productId, // Ensure productId is included
         })),
         shippingInfo,
         deliveryMethod,
@@ -566,7 +570,6 @@ app.post("/api/orders", async (req, res) => {
         orderStatus: "processing",
       });
 
-      // Handle payment status
       if (paymentResult) {
         newOrder.paymentResult = {
           id: paymentResult.id || "",
@@ -579,10 +582,8 @@ app.post("/api/orders", async (req, res) => {
         newOrder.paymentStatus = paymentMethod === "cod" || paymentMethod === "upi" ? "pending" : "failed";
       }
 
-      // Save order
       const savedOrder = await newOrder.save({ session });
 
-      // Update stock for each item
       for (const item of orderItems) {
         await Product.updateOne(
           { _id: item.productId },
@@ -591,7 +592,6 @@ app.post("/api/orders", async (req, res) => {
         );
       }
 
-      // Update user order history
       if (validatedUserId) {
         await User.findByIdAndUpdate(
           validatedUserId,
@@ -653,25 +653,7 @@ app.get("/api/my-orders", authenticateToken, async (req, res) => {
       });
     }
 
-    // If the user has orderHistory field with populated orders, use that first
-    if (user.orderHistory && user.orderHistory.length > 0) {
-      const populatedUser = await User.findById(req.user.id)
-        .select('orderHistory')
-        .populate({
-          path: 'orderHistory',
-          options: { sort: { createdAt: -1 } }
-        });
-      
-      console.log(`Found ${populatedUser.orderHistory.length} orders in user's orderHistory`);
-      
-      return res.json({
-        success: true,
-        orders: populatedUser.orderHistory,
-        message: "Orders retrieved from order history"
-      });
-    }
-    
-    // Fallback: Find orders by user ID or matching email
+    // Fetch orders using both user ID and email
     const userOrders = await Order.find({ 
       $or: [
         { user: req.user.id },
@@ -680,19 +662,14 @@ app.get("/api/my-orders", authenticateToken, async (req, res) => {
     }).sort({ createdAt: -1 });
     
     console.log(`Found ${userOrders.length} orders by ID/email lookup`);
-    
-    // If we found orders, also update the user's orderHistory for future
+
+    // Update user's orderHistory with all found orders
     if (userOrders.length > 0) {
       try {
-        // Update the user's orderHistory with these order IDs
         const orderIds = userOrders.map(order => order._id);
-        await User.findByIdAndUpdate(
-          req.user.id,
-          { 
-            orderHistory: orderIds,
-            lastUpdated: new Date()
-          }
-        );
+        user.orderHistory = orderIds; // Update orderHistory
+        user.lastUpdated = new Date();
+        await user.save();
         console.log("Updated user's orderHistory with found orders");
       } catch (updateError) {
         console.error("Failed to update orderHistory:", updateError);
@@ -710,7 +687,7 @@ app.get("/api/my-orders", authenticateToken, async (req, res) => {
     return res.json({
       success: true,
       orders: userOrders,
-      message: "Orders retrieved by ID and email lookup"
+      message: "Orders retrieved successfully"
     });
   } catch (error) {
     console.error("Error fetching orders:", error);
@@ -810,7 +787,6 @@ app.get("/api/cart/:userId", authenticateToken, async (req, res) => {
       return res.status(200).json({ items: [] });
     }
 
-    // Transform cart items, filtering out invalid items
     const transformedItems = cart.items
       .map((item, index) => {
         if (!item.productId || !mongoose.Types.ObjectId.isValid(item.productId)) {
@@ -841,18 +817,16 @@ app.get("/api/cart/:userId", authenticateToken, async (req, res) => {
 app.post("/api/cart/add", authenticateToken, async (req, res) => {
   try {
     const { userId, product } = req.body;
-    if (!userId || !product?.productId || !product.quantity) {
+    if (!userId || !product?.productId || !product.quantity || !product.image) {
       console.error("Missing required fields:", { userId, product });
-      return res.status(400).json({ message: "Missing userId, productId, or quantity" });
+      return res.status(400).json({ message: "Missing userId, productId, quantity, or image" });
     }
 
-    // Validate productId as ObjectId
     if (!mongoose.Types.ObjectId.isValid(product.productId)) {
       console.error("Invalid productId:", product.productId);
       return res.status(400).json({ message: "Invalid productId format" });
     }
 
-    // Validate product and stock
     const productData = await Product.findById(product.productId);
     if (!productData) {
       console.error("Product not found for productId:", product.productId);
@@ -867,7 +841,6 @@ app.post("/api/cart/add", authenticateToken, async (req, res) => {
       cart = new Cart({ userId, items: [] });
     }
 
-    // Check for existing item
     const incomingId = product.productId;
     console.log("Checking for productId in cart:", incomingId);
     const existingIndex = cart.items.findIndex(
@@ -875,26 +848,25 @@ app.post("/api/cart/add", authenticateToken, async (req, res) => {
     );
 
     if (existingIndex !== -1) {
-      // Item exists, update quantity
       const newQuantity = cart.items[existingIndex].quantity + product.quantity;
       if (newQuantity > productData.stock) {
         return res.status(400).json({ message: `Only ${productData.stock} units available` });
       }
       cart.items[existingIndex].quantity = newQuantity;
+      cart.items[existingIndex].image = product.image; // Update image in case it changed
       console.log(`Updated quantity for product ${incomingId} to ${newQuantity}`);
-    }else {
-  // New item, add to cart
-  const newItem = {
-    productId: new mongoose.Types.ObjectId(product.productId),
-    name: product.name || productData.name || "Unknown Product",
-    image: product.image || productData.image || "", // Ensure image is included
-    mrp: product.mrp || productData.mrp || 0,
-    discountedPrice: product.discountedPrice || productData.discountedPrice || 0,
-    quantity: product.quantity || 1,
-  };
-  cart.items.push(newItem);
-  console.log(`Added new product ${incomingId} to cart with image:`, newItem.image ? newItem.image.substring(0, 50) : "MISSING");
-}
+    } else {
+      const newItem = {
+        productId: new mongoose.Types.ObjectId(product.productId),
+        name: product.name || productData.name || "Unknown Product",
+        image: product.image, // Use the provided image
+        mrp: product.mrp || productData.mrp || 0,
+        discountedPrice: product.discountedPrice || productData.discountedPrice || 0,
+        quantity: product.quantity || 1,
+      };
+      cart.items.push(newItem);
+      console.log(`Added new product ${incomingId} to cart with image:`, newItem.image ? newItem.image.substring(0, 50) : "MISSING");
+    }
 
     await cart.save();
     console.log("Cart saved successfully for user:", userId);
@@ -976,20 +948,18 @@ app.post("/api/user/wishlist", authenticateToken, async (req, res) => {
   try {
     const { productId, name, price, image, description, category } = req.body;
     
-    if (!productId || !name || price === undefined) {
-      return res.status(400).json({ message: "Missing required product information" });
+    if (!productId || !name || price === undefined || !image) {
+      return res.status(400).json({ message: "Missing required product information (productId, name, price, image)" });
     }
     
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
     
-    // Check if item already exists in wishlist
     const existingItem = user.wishlist.find(item => item.productId === productId);
     if (existingItem) {
       return res.status(400).json({ message: "Item already in wishlist" });
     }
     
-    // Add new item to wishlist
     user.wishlist.push({
       productId,
       name,
