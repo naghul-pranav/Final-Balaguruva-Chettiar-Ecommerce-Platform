@@ -13,13 +13,20 @@ const PORT = 5008;
 const Cart = require('./models/Cart');
 
 // Middleware
-app.use(express.json());
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://final-balaguruva-chettiar-ecommerce.onrender.com'], // Update with your actual production domain
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: [
+    'http://localhost:3000', // For local development
+    'https://balaguruvachettiarsons.vercel.app', // Your frontend production URL
+    'https://final-balaguruva-chettiar-ecommerce.onrender.com' // Your backend URL (if needed)
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Include OPTIONS for preflight requests
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
+  credentials: true, // Allow credentials (e.g., tokens in headers)
 }));
+// Handle preflight requests for all routes
+app.options('*', cors()); // Automatically respond to OPTIONS requests
+app.use(express.json());
 
 // MongoDB Connection
 const MONGO_URI = "mongodb+srv://balaguruva-admin:Balaguruva%401@balaguruvacluster.d48xg.mongodb.net/?retryWrites=true&w=majority&appName=BalaguruvaCluster";

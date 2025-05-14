@@ -109,7 +109,7 @@ useEffect(() => {
         product: {
           productId,
           name: selectedProduct.name,
-          image: selectedProduct.image || "", // Ensure image is always included
+          image: selectedProduct.image || "",
           mrp: selectedProduct.mrp,
           discountedPrice: selectedProduct.discountedPrice,
           quantity,
@@ -122,6 +122,7 @@ useEffect(() => {
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true, // Add this to support credentials
         }
       );
 
