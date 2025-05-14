@@ -101,7 +101,7 @@ const ContactCard = ({ t }) => {
       <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-5 rounded-full -translate-x-10 -translate-y-10" />
       <div className="absolute bottom-0 left-0 w-20 h-20 bg-white opacity-5 rounded-full translate-x-5 translate-y-5" />
       
-      <h3 className="text-xl font-bold mb-4">Balaguruva Chettiar Son's Co</h3>
+      <h3 className="text-xl font-bold mb-4">{t("Balaguruva Chettiar Son's Co", "contact")}</h3>
       <div className="space-y-3">
         <div className="flex items-center">
           <FaPhone className="mr-3 text-blue-200" /> 
@@ -113,7 +113,7 @@ const ContactCard = ({ t }) => {
         </div>
         <div className="flex items-center">
           <FaMapMarkerAlt className="mr-3 text-blue-200" /> 
-          <span className="text-sm">97, Agraharam Street, Erode</span>
+          <span className="text-sm">{t("97, Agraharam Street, Erode", "contact")}</span>
         </div>
       </div>
       <motion.button
@@ -314,7 +314,7 @@ const ContactPage = () => {
   // Form field labels and placeholders
   const formFields = {
     name: {
-      label: t('Full Name', 'contact'),
+      label: t('Full Name', 'home'),
       placeholder: t('Your name', 'contact'),
       error: t('Name is required', 'contact')
     },

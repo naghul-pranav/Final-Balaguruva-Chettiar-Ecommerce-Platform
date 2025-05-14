@@ -57,12 +57,15 @@ const translations = {
       "Surprise Me!": "ஆச்சரியப்படுத்து!",
       "User menu": "பயனர் பட்டி",
       "User": "பயனர்",
+      "Cart": "கூடை",
     },
     footer: {
       "Providing high-quality cookwares for all your kitchen needs": "உங்கள் சமையலறை தேவைகளுக்காக உயர்தர சமையல் பாத்திரங்களை வழங்குதல்",
       "97, Agraharam Street, Erode": "97, அக்ரஹாரம் தெரு, ஈரோடு",
-      "© 2025 Balaguruva Chettiar. All rights reserved. Made with ♥ for quality products.": "© 2025 பாலகுருவா செட்டியார். அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை. தரமான தயாரிப்புகளுக்காக ♥ உடன் உருவாக்கப்பட்டது.",
-      "Providing high-quality yarns for all your textile needs since 2020": "2020 முதல் உங்கள் ஜவுளித் தேவைகளுக்கான உயர்தர நூல்களை வழங்குகிறோம்",
+      "All rights reserved.": "அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
+      "Made with": "தரமான தயாரிப்புகளுக்காக",
+      "Balaguruva Chettiar": "பாலகுருவா செட்டியார்",
+      "for quality products.": "உடன் உருவாக்கப்பட்டது.",
       "Quick Links": "விரைவு இணைப்புகள்",
       "Connect With Us": "எங்களுடன் இணைக",
       "Newsletter": "செய்திமடல்",
@@ -72,8 +75,6 @@ const translations = {
       "Subscribed successfully!": "வெற்றிகரமாக பதிவு செய்யப்பட்டது!",
       "Privacy Policy": "தனியுரிமைக் கொள்கை",
       "Terms of Service": "சேவை விதிமுறைகள்",
-      "All rights reserved.": "அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
-      "Made with": "உடன் செய்யப்பட்டது",
       "for quality yarns.": "தரமான நூல்களுக்காக.",
       "Products": "தயாரிப்புகள்",
       "About": "எங்களைப் பற்றி",
@@ -83,9 +84,42 @@ const translations = {
       "Subscribe to Newsletter": "செய்திமடலுக்கு பதிவு செய்யுங்கள்",
       "Enter email": "மின்னஞ்சலை உள்ளிடவும்",
       "Subscribe": "பதிவு செய்",
+      "Balaguruva Chettiar Son's Co": "பாலகுருவா செட்டியார் மகன்கள் நிறுவனம்",
       "Copyright": "பதிப்புரிமை"
     },
     home: {
+      "Full Name": "முழு பெயர்",
+      "Our Premium Products": "எங்கள் உயர்தர தயாரிப்புகள்",
+      "Discover our collection of high-quality products designed for you": "உங்களுக்காக வடிவமைக்கப்பட்ட உயர்தர தயாரிப்புகளின் தொகுப்பைக் கண்டறியுங்கள்",
+      "Search products...": "தயாரிப்புகளைத் தேடு...",
+      "Sort Products": "தயாரிப்புகளை வரிசைப்படுத்து",
+      "Clear": "துடை",
+      "No products found": "எந்த தயாரிப்புகளும் கிடைக்கவில்லை",
+      "Try adjusting your search or filter to find what you're looking for.": "நீங்கள் தேடுவதைக் கண்டறிய உங்கள் தேடலை அல்லது வடிகட்டியை சரிசெய்ய முயற்சிக்கவும்.",
+      "Your cart is empty": "உங்கள் கூடை காலியாக உள்ளது",
+      "Looks like you haven't added anything to your cart yet. Browse our products and find something you'll love!": "நீங்கள் இன்னும் உங்கள் கூடையில் எதையும் சேர்க்கவில்லை போல் தெரிகிறது. எங்கள் தயாரிப்புகளை உலாவி, நீங்கள் விரும்பும் ஒன்றைக் கண்டறியுங்கள்!",
+      "Continue Shopping": "ஷாப்பிங்கைத் தொடரவும்",
+      "Balaguruva Chettiar Son's Co": "பாலகுருவா செட்டியார் மகன்கள் நிறுவனம்",
+      "Welcome to Balaguruva Chettiar Son's Co": "பாலகுருவா செட்டியார் மகன்கள் நிறுவனத்திற்கு வரவேற்கிறோம்",
+      "Premium Quality Cookware Utensils for a Better Kitchen": "சிறந்த சமையலறைக்கு உயர்தர சமையல் பாத்திரங்கள்",
+      "Explore Our Products": "எங்கள் தயாரிப்புகளை ஆராயுங்கள்",
+      "Discover Balaguruva Chettiar Son's Co": "பாலகுருவா செட்டியார் மகன்கள் நிறுவனத்தை கண்டறியுங்கள்",
+      "Crafted for excellence, sustainability, and innovation in every cookwares.": "ஒவ்வொரு சமையல் பாத்திரத்திலும் சிறப்பு, நிலைத்தன்மை மற்றும் புதுமைக்காக வடிவமைக்கப்பட்டவை.",
+      "Eco-Friendly": "சுற்றுச்சூழலுக்கு உகந்தவை",
+      "Our cookwares are produced using sustainable practices to minimize environmental impact.": "எங்கள் சமையல் பாத்திரங்கள் சுற்றுச்சூழல் பாதிப்பை குறைக்க நிலையான முறைகளைப் பயன்படுத்தி தயாரிக்கப்படுகின்றன.",
+      "Recycled Materials": "மறுசுழற்சி செய்யப்பட்ட பொருட்கள்",
+      "We offer a range of cookwares made from recycled materials, promoting circular economy.": "நாங்கள் மறுசுழற்சி செய்யப்பட்ட பொருட்களால் ஆன சமையல் பாத்திரங்களை வழங்குகிறோம், இது சுழற்சி பொருளாதாரத்தை ஊக்குவிக்கிறது.",
+      "State-of-the-Art Production": "நவீன உற்பத்தி தொழில்நுட்பம்",
+      "Our modern facilities ensure consistent quality and efficient production.": "எங்கள் நவீன வசதிகள் நிலையான தரம் மற்றும் திறமையான உற்பத்தியை உறுதி செய்கின்றன.",
+      "Why Choose Balaguruva Chettiar Son's Co": "ஏன் பாலகுருவா செட்டியார் மகன்கள் நிறுவனத்தை தேர்வு செய்ய வேண்டும்",
+      "Wide range of cookware types including copper, brass, bronze, and ceramic cookwares": "செம்பு, பித்தளை, வெண்கலம் மற்றும் செராமிக் சமையல் பாத்திரங்கள் உட்பட பல்வேறு வகையான சமையல் பாத்திரங்கள்",
+      "Customizable options to meet your specific requirements and preferences": "உங்கள் குறிப்பிட்ட தேவைகள் மற்றும் விருப்பங்களை பூர்த்தி செய்ய தனிப்பயனாக்கப்பட்ட விருப்பங்கள்",
+      "Commitment to delivering consistent quality and customer satisfaction": "நிலையான தரம் மற்றும் வாடிக்கையாளர் திருப்தியை வழங்குவதற்கான அர்ப்பணிப்பு",
+      "Sustainable practices and eco-friendly options": "நிலையான முறைகள் மற்றும் சுற்றுச்சூழலுக்கு உகந்த விருப்பங்கள்",
+      "Competitive pricing with a focus on timely and reliable delivery": "சரியான மற்றும் நம்பகமான விநியோகத்திற்கு முக்கியத்துவம் அளித்து போட்டித்தன்மையுள்ள விலை",
+      "Our Commitment to Sustainability": "நிலைத்தன்மைக்கான எங்கள் அர்ப்பணிப்பு",
+      "At Balaguruva Chettiar Son's Co, we are dedicated to reducing our environmental footprint through innovative practices and sustainable materials.": "பாலகுருவா செட்டியார் மகன்கள் நிறுவனத்தில், புதுமையான முறைகள் மற்றும் நிலையான பொருட்கள் மூலம் எங்கள் சுற்றுச்சூழல் தடத்தை குறைப்பதற்கு நாங்கள் அர்ப்பணித்துள்ளோம்.",
+      "Learn More About Our Initiatives": "எங்கள் முயற்சிகள் பற்றி மேலும் அறியவும்",
       "Welcome to": "வரவேற்கிறோம்",
       "Premium Quality Yarns for a Sustainable Future": "நிலையான எதிர்காலத்திற்கான உயர்தர நூல்கள்",
       "Explore Our Products": "எங்கள் தயாரிப்புகளை ஆராயுங்கள்",
@@ -160,6 +194,7 @@ const translations = {
       "Fashion Limited": "பேஷன் லிமிடெட்",
       "Eco Textiles": "எக்கோ டெக்ஸ்டைல்ஸ்",
       "Global Fabrics": "குளோபல் பேப்ரிக்ஸ்"
+
     },
     products: {
       "Loading amazing products...": "அற்புதமான தயாரிப்புகளை ஏற்றுகிறது...",
@@ -174,6 +209,10 @@ const translations = {
       "reviews": "மதிப்புரைகள்"
     },
     about: {
+      "About Balaguruva Chettiar Son's Co": "பாலகுருவா செட்டியார் மகன்கள் நிறுவனம் பற்றி",
+      "Founded in 1992, Balaguruva Chettiar Son's Co has been at the forefront of the cookware industry for over three decades. What started as a small family-owned business has grown into a leading manufacturer of high-quality cookwares, serving customers worldwide.": "1992இல் நிறுவப்பட்ட பாலகுருவா செட்டியார் மகன்கள் நிறுவனம், மூன்று தசாப்தங்களுக்கும் மேலாக சமையல் பாத்திரத் துறையில் முன்னணியில் உள்ளது. ஒரு சிறிய குடும்பத்திற்கு சொந்தமான வணிகமாக தொடங்கியது, உலகளவில் வாடிக்கையாளர்களுக்கு சேவை செய்யும் உயர்தர சமையல் பாத்திரங்களின் முன்னணி உற்பத்தியாளராக வளர்ந்துள்ளது.",
+      "At Balaguruva Chettiar Son's Co, we believe in responsible manufacturing. We're committed to reducing our environmental impact through sustainable practices, including the use of recycled materials, energy-efficient production methods, and waste reduction initiatives.": "பாலகுருவா செட்டியார் மகன்கள் நிறுவனத்தில், நாங்கள் பொறுப்பான உற்பத்தியில் நம்பிக்கை கொண்டுள்ளோம். மறுசுழற்சி செய்யப்பட்ட பொருட்களின் பயன்பாடு, ஆற்றல் திறன் கொண்ட உற்பத்தி முறைகள் மற்றும் கழிவு குறைப்பு முயற்சிகள் உள்ளிட்ட நிலையான முறைகள் மூலம் எங்கள் சுற்றுச்சூழல் தாக்கத்தை குறைப்பதற்கு நாங்கள் உறுதிபூண்டுள்ளோம்.",
+      "Our success is built on the expertise and dedication of our team. From our skilled craftmens to our innovative designers, every member of Balaguruva Chettiar Son's Co is committed to delivering excellence in every cookware utensil we produce.": "எங்கள் வெற்றி எங்கள் குழுவின் நிபுணத்துவம் மற்றும் அர்ப்பணிப்பின் மீது கட்டமைக்கப்பட்டுள்ளது. எங்கள் திறமையான கைவினைஞர்கள் முதல் புதுமையான வடிவமைப்பாளர்கள் வரை, பாலகுருவா செட்டியார் மகன்கள் நிறுவனத்தின் ஒவ்வொரு உறுப்பினரும் நாங்கள் உற்பத்தி செய்யும் ஒவ்வொரு சமையல் பாத்திரத்திலும் சிறப்பை வழங்குவதற்கு உறுதிபூண்டுள்ளனர்.",
       "Pioneering excellence in textile manufacturing since 2020": "2020 ஆம் ஆண்டு முதல் ஜவுளி உற்பத்தியில் முன்னோடியாக உள்ளோம்",
       "Products Manufactured": "உற்பத்தி செய்யப்பட்ட தயாரிப்புகள்",
       "States Served": "சேவை செய்யப்பட்ட மாநிலங்கள்",
@@ -208,7 +247,20 @@ const translations = {
       "Office": "அலுவலகம்",
       "Mobile": "கைபேசி",
       "WhatsApp": "வாட்ஸ்ஆப்",
-      "Address": "முகவரி"
+      "Address": "முகவரி",
+      "Balaguruva Chettiar Son's Co": "பாலகுருவா செட்டியார் மகன்கள் நிறுவனம்",
+      "97, Agraharam Street, Erode": "97, அக்ரஹாரம் தெரு, ஈரோடு",
+      "Save Contact": "தொடர்பை சேமி",
+      "Business Hours": "வணிக நேரங்கள்",
+      "Monday": "திங்கள்",
+      "Tuesday": "செவ்வாய்",
+      "Wednesday": "புதன்",
+      "Thursday": "வியாழன்",
+      "Friday": "வெள்ளி",
+      "Saturday": "சனி",
+      "Sunday": "ஞாயிறு",
+      "Find Us": "எங்களைக் கண்டறியுங்கள்"
+    }
     },
     cart: {
       "My Cart": "என் கூடை",
@@ -318,7 +370,7 @@ const translations = {
       "logical": "தருக்கரீதியான",
       "recommendations": "பரிந்துரைகள்",
       "Matching your preferences with available yarns": "கிடைக்கும் நூல்களுடன் உங்கள் விருப்பங்களை பொருத்துகிறது"
-    }
+    
   }
 };
 

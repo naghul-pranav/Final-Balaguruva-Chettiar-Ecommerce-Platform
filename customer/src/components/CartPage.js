@@ -19,8 +19,10 @@ import Payment from "./Payment";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import { FileText } from "lucide-react";
+import { useTranslation } from "../utils/TranslationContext"
 
 const CartPage = ({ removeFromCart, isLoading, user }) => {
+  const { t } = useTranslation();
   const [allProducts, setAllProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [step, setStep] = useState("cart");
@@ -454,9 +456,9 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
         <motion.div variants={floatingAnimation} animate="animate" className="mb-6 p-6 bg-blue-50 rounded-full">
           <FaShoppingCart className="text-6xl text-blue-400" />
         </motion.div>
-        <h2 className="text-2xl font-semibold mb-4">Your cart is empty</h2>
+        <h2 className="text-2xl font-semibold mb-4">{t("Your cart is empty", "home")}</h2>
         <p className="text-gray-600 mb-6 text-center max-w-md">
-          Looks like you haven't added anything to your cart yet. Browse our products and find something you'll love!
+          {t("Looks like you haven't added anything to your cart yet. Browse our products and find something you'll love!", "home")}
         </p>
         <motion.button
   whileHover={{ scale: 1.05 }}
@@ -465,7 +467,7 @@ const CartPage = ({ removeFromCart, isLoading, user }) => {
   className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
 >
   <FaArrowLeft />
-  <span>Continue Shopping</span>
+  <span>{t("Continue Shopping", "home")}</span>
 </motion.button>
       </motion.div>
     );

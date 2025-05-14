@@ -5,8 +5,10 @@ import useProducts from "../hooks/useProducts";
 import { fallbackImageBase64 } from '../assets/fallback';
 import { useNavigate } from 'react-router-dom';
 import axios from "axios";
+import { useTranslation } from "../utils/TranslationContext"
 
 const ScrollProgressBar = () => {
+  const { t } = useTranslation();
   const { scrollYProgress } = useScroll()
   
   return (
@@ -18,6 +20,7 @@ const ScrollProgressBar = () => {
 }
 
 const ProductPage = ({ addToCart, isAuthenticated }) => {
+  const { t } = useTranslation();
   const {
     products: filteredProducts,
     searchTerm,
@@ -510,7 +513,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
           whileHover={{ scale: 1.03 }}
           transition={{ type: "spring", stiffness: 300, damping: 10 }}
         >
-          Our Premium Products
+          {t("Our Premium Products", "home")}
         </motion.h1>
         <motion.p
           className="text-center text-xl text-gray-600 max-w-2xl mx-auto"
@@ -518,7 +521,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          Discover our collection of high-quality products designed for you
+          {t("Discover our collection of high-quality products designed for you", "home")}
         </motion.p>
       </motion.div>
       
@@ -533,7 +536,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
             <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder={t("Search products...", "home")}
               className="p-4 pl-12 border border-gray-200 rounded-xl w-full focus:ring-2 focus:ring-blue-400 shadow-md bg-white text-black transition-all duration-300 hover:shadow-lg outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -545,7 +548,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
             >
-              <option value="">Sort Products</option>
+              <option value="">{t("Sort Products", "home")}</option>
               <option value="price-asc">Price: Low to High</option>
               <option value="price-desc">Price: High to Low</option>
               <option value="name-asc">Name: A to Z</option>
@@ -560,7 +563,7 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
               }}
               className="px-6 py-2 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 text-gray-700 hover:shadow-lg transition-all duration-300"
             >
-              Clear
+              {t("Clear", "home")}
             </motion.button>
           </div>
         </div>
@@ -574,8 +577,8 @@ const ProductPage = ({ addToCart, isAuthenticated }) => {
           transition={{ duration: 0.5 }}
         >
           <FaSearch className="text-5xl text-gray-400 mb-4 mx-auto" />
-          <h3 className="text-2xl font-semibold mb-2">No products found</h3>
-          <p>Try adjusting your search or filter to find what you're looking for.</p>
+          <h3 className="text-2xl font-semibold mb-2">{t("No products found", "home")}</h3>
+          <p>{t("Try adjusting your search or filter to find what you're looking for.", "home")}</p>
         </motion.div>
       )}
       

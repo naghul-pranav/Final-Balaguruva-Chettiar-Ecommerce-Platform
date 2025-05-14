@@ -146,7 +146,7 @@ const Footer = () => {
                 aria-label="Email address"
               >
                 <FaMapMarkerAlt className="text-teal-400" />
-                <span>97, Agraharam Street, Erode</span>
+                <span>{t("97, Agraharam Street, Erode", "footer")}</span>
               </motion.a>
             </div>
           </motion.div>
